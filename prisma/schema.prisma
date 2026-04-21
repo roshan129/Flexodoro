@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SessionMode {
+  FIXED
+  FLEXIBLE
+}
+
+enum SessionType {
+  WORK
+  BREAK
+}
+
+model Session {
+  id          String      @id @default(cuid())
+  mode        SessionMode
+  type        SessionType @default(WORK)
+  durationSec Int
+  startedAt   DateTime
+  endedAt     DateTime?
+  createdAt   DateTime    @default(now())
+}
