@@ -3,10 +3,12 @@
 
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useFocusAudioEngine } from "@/features/music/hooks/use-focus-audio-engine";
+import { useAppStore } from "@/store/use-app-store";
+import type { MusicTrackId } from "@/store/use-app-store";
 import {
   Play,
   Pause,
-  Square,
   Maximize2,
   Minimize2,
   Music2,
@@ -15,7 +17,6 @@ import {
   VolumeX,
   Waves,
   Wind,
-  Coffee,
   Music,
   Flag,
   SkipForward,
@@ -47,9 +48,20 @@ type Sound = { id: string; label: string; icon: ReactNode; color: string };
 const SOUNDS: Sound[] = [
   { id: 'rain', label: 'Rain', icon: <Waves size={16} />, color: '#06B6D4' },
   { id: 'white', label: 'White Noise', icon: <Wind size={16} />, color: '#8B5CF6' },
-  { id: 'cafe', label: 'Café', icon: <Coffee size={16} />, color: '#F59E0B' },
   { id: 'ambient', label: 'Ambient', icon: <Music size={16} />, color: '#10B981' },
 ];
+
+const SOUND_TO_TRACK: Record<string, MusicTrackId> = {
+  rain: "soft-rain",
+  white: "alpha-pulse",
+  ambient: "deep-focus",
+};
+
+const TRACK_TO_SOUND: Record<MusicTrackId, string> = {
+  "deep-focus": "ambient",
+  "soft-rain": "rain",
+  "alpha-pulse": "white",
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatTime(s: number) {
@@ -562,7 +574,7 @@ function MusicPanel({
             textAlign: 'center',
           }}
         >
-          🎵 Playing {SOUNDS.find((s) => s.id === activeSound)?.label} (simulated)
+          🎵 Playing {SOUNDS.find((s) => s.id === activeSound)?.label}
         </motion.p>
       )}
     </motion.div>
@@ -686,6 +698,15 @@ function DeepWorkOverlay({
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export function TimerScreen() {
+  useFocusAudioEngine();
+
+  const selectedTrackId = useAppStore((state) => state.selectedTrackId);
+  const isMusicPlaying = useAppStore((state) => state.isMusicPlaying);
+  const musicVolume = useAppStore((state) => state.musicVolume);
+  const setSelectedTrackId = useAppStore((state) => state.setSelectedTrackId);
+  const setMusicPlaying = useAppStore((state) => state.setMusicPlaying);
+  const setMusicVolume = useAppStore((state) => state.setMusicVolume);
+
   const [mode, setMode] = useState<Mode>('flexible');
   const [preset, setPreset] = useState<Preset>('25/5');
   const [phase, setPhase] = useState<Phase>('idle');
@@ -695,8 +716,6 @@ export function TimerScreen() {
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [deepWork, setDeepWork] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
-  const [activeSound, setActiveSound] = useState<string | null>(null);
-  const [volume, setVolume] = useState(0.7);
   const [autoPlay, setAutoPlay] = useState(false);
   const [completedSessions, setCompletedSessions] = useState(0);
   const intervalRef = useRef<number | null>(null);
@@ -718,6 +737,8 @@ export function TimerScreen() {
     window.localStorage.setItem(MODE_STORAGE_KEY, mode);
   }, [mode]);
 
+  const activeSound = TRACK_TO_SOUND[selectedTrackId];
+
   // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -728,11 +749,15 @@ export function TimerScreen() {
           setTime(t);
           setPhase('work');
           setPaused(false);
-          if (autoPlay && activeSound === null) setActiveSound('rain');
+          if (!isMusicPlaying) {
+            setMusicPlaying(true);
+          }
         } else if (paused) {
           setPaused(false);
+          setMusicPlaying(true);
         } else {
           setPaused(true);
+          setMusicPlaying(false);
         }
       }
       if (e.key === 'Escape') {
@@ -742,7 +767,7 @@ export function TimerScreen() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [showBreakModal, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, activeSound]);
+  }, [showBreakModal, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, setSelectedTrackId]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   const tickRef = useRef({ phase, paused, mode, preset });
@@ -803,28 +828,44 @@ export function TimerScreen() {
     setTime(t);
     setPhase('work');
     setPaused(false);
-    if (autoPlay && activeSound === null) setActiveSound('rain');
-  }, [mode, preset, autoPlay, activeSound]);
+    if (!isMusicPlaying) {
+      setMusicPlaying(true);
+    }
+  }, [mode, preset, isMusicPlaying, setMusicPlaying]);
 
-  const handlePause = useCallback(() => setPaused(true), []);
-  const handleResume = useCallback(() => setPaused(false), []);
+  const handlePause = useCallback(() => {
+    setPaused(true);
+    setMusicPlaying(false);
+  }, [setMusicPlaying]);
+  const handleResume = useCallback(() => {
+    setPaused(false);
+    setMusicPlaying(true);
+  }, [setMusicPlaying]);
 
   const handleStop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setPhase('idle');
     setPaused(false);
     setTime(mode === 'fixed' ? WORK_DURATIONS[preset] : 0);
-  }, [mode, preset]);
+    setMusicPlaying(false);
+  }, [mode, preset, setMusicPlaying]);
 
   const handleEndSession = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     const worked = time;
+
+    if (worked < 3 * 60) {
+      handleStop();
+      return;
+    }
+
     const suggested = calcSuggestedBreak(worked);
     setBreakDur(suggested);
     setPaused(true);
     setShowBreakModal(true);
-  }, [time]);
+    setMusicPlaying(false);
+  }, [time, handleStop, setMusicPlaying]);
 
   const handleStartBreak = useCallback(() => {
     setShowBreakModal(false);
@@ -838,6 +879,17 @@ export function TimerScreen() {
     setShowBreakModal(false);
     handleStop();
   }, [handleStop]);
+
+  const handleSetActiveSound = useCallback((id: string | null) => {
+    if (id === null) {
+      setMusicPlaying(false);
+      return;
+    }
+
+    const mappedTrack = SOUND_TO_TRACK[id] ?? "deep-focus";
+    setSelectedTrackId(mappedTrack);
+    setMusicPlaying(true);
+  }, [setMusicPlaying, setSelectedTrackId]);
 
   // Mode/Preset switching (only when idle)
   const handleModeSwitch = (m: Mode) => {
@@ -1127,29 +1179,8 @@ export function TimerScreen() {
                 {paused ? <Play size={20} fill={TEXT} /> : <Pause size={20} />}
               </motion.button>
 
-              {/* Stop */}
-              <motion.button
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.94 }}
-                onClick={handleStop}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  border: `1px solid ${BORDER}`,
-                  background: SURFACE2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: MUTED,
-                }}
-              >
-                <Square size={18} />
-              </motion.button>
-
               {/* End Session (flexible only) */}
-              {mode === 'flexible' && !paused && (
+              {mode === 'flexible' && (
                 <motion.button
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1340,9 +1371,9 @@ export function TimerScreen() {
           <MusicPanel
             onClose={() => setMusicOpen(false)}
             activeSound={activeSound}
-            setActiveSound={setActiveSound}
-            volume={volume}
-            setVolume={setVolume}
+            setActiveSound={handleSetActiveSound}
+            volume={musicVolume}
+            setVolume={setMusicVolume}
             autoPlay={autoPlay}
             setAutoPlay={setAutoPlay}
           />
