@@ -77,7 +77,7 @@ function formatTime(s: number) {
 function calcSuggestedBreak(workedSeconds: number): number {
   const mins = workedSeconds / 60;
   const breakMins = Math.round(mins / 5);
-  return Math.max(3, Math.min(30, breakMins)) * 60;
+  return Math.max(1, Math.min(30, breakMins)) * 60;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -339,6 +339,150 @@ function BreakModal({
             <SkipForward size={14} />
             Skip Break
           </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function ModeSwitchConfirmModal({
+  targetMode,
+  workedSeconds,
+  onConfirm,
+  onCancel,
+}: {
+  targetMode: Mode;
+  workedSeconds: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(6px)',
+        zIndex: 110,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92, y: 18 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 10 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        style={{
+          background: SURFACE,
+          border: `1px solid ${BORDER}`,
+          borderRadius: 20,
+          padding: 32,
+          maxWidth: 420,
+          width: '100%',
+          boxShadow: '0 36px 80px rgba(0,0,0,0.7)',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'rgba(124,92,252,0.12)',
+            border: '1px solid rgba(124,92,252,0.24)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 22px',
+            color: ACCENT,
+          }}
+        >
+          <Flag size={22} />
+        </div>
+
+        <h2
+          style={{
+            fontFamily: FONT_DISPLAY,
+            fontSize: 22,
+            fontWeight: 700,
+            color: TEXT,
+            marginBottom: 8,
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Switch mode?
+        </h2>
+        <p style={{ fontSize: 14, color: MUTED, lineHeight: 1.6, marginBottom: 26 }}>
+          Switching mode will end your current session.
+        </p>
+
+        <div
+          style={{
+            background: SURFACE2,
+            border: `1px solid ${BORDER}`,
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 26,
+          }}
+        >
+          <p style={{ fontSize: 11, color: MUTED, fontWeight: 600, marginBottom: 5 }}>
+            CURRENT SESSION
+          </p>
+          <p
+            style={{
+              fontFamily: FONT_DISPLAY,
+              fontSize: 22,
+              fontWeight: 700,
+              color: TEXT,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            {formatTime(workedSeconds)}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: 12,
+              border: `1px solid ${BORDER}`,
+              background: 'rgba(255,255,255,0.04)',
+              color: MUTED,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              borderRadius: 12,
+              border: 'none',
+              background: ACCENT,
+              color: 'white',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(124,92,252,0.35)',
+            }}
+          >
+            Switch to {targetMode === 'fixed' ? 'Fixed' : 'Flexible'}
+          </button>
         </div>
       </motion.div>
     </motion.div>
@@ -716,7 +860,9 @@ export function TimerScreen() {
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [deepWork, setDeepWork] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
-  const [autoPlay, setAutoPlay] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [pendingMode, setPendingMode] = useState<Mode | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
   const intervalRef = useRef<number | null>(null);
 
@@ -737,24 +883,61 @@ export function TimerScreen() {
     window.localStorage.setItem(MODE_STORAGE_KEY, mode);
   }, [mode]);
 
-  const activeSound = TRACK_TO_SOUND[selectedTrackId];
+  const isTimerRunning = phase !== 'idle' && !paused;
+  const activeSound = isMusicPlaying ? TRACK_TO_SOUND[selectedTrackId] : null;
+
+  const handleCloseMusicPanel = useCallback(() => {
+    setMusicOpen(false);
+
+    if (!isTimerRunning) {
+      setMusicPlaying(false);
+    }
+  }, [isTimerRunning, setMusicPlaying]);
+
+  useEffect(() => {
+    if (phase === 'break' && isMusicPlaying) {
+      setMusicPlaying(false);
+    }
+  }, [phase, isMusicPlaying, setMusicPlaying]);
+
+  useEffect(() => {
+    if (!feedbackMessage) return;
+
+    const timeout = window.setTimeout(() => {
+      setFeedbackMessage(null);
+    }, 3200);
+
+    return () => window.clearTimeout(timeout);
+  }, [feedbackMessage]);
+
+  const getWorkedSeconds = useCallback(() => {
+    if (phase !== 'work') {
+      return 0;
+    }
+
+    return mode === 'fixed'
+      ? Math.max(0, WORK_DURATIONS[preset] - time)
+      : Math.max(0, time);
+  }, [mode, phase, preset, time]);
 
   // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !showBreakModal) {
+      if (e.code === 'Space' && !showBreakModal && !pendingMode) {
         e.preventDefault();
         if (phase === 'idle') {
           const t = mode === 'fixed' ? WORK_DURATIONS[preset] : 0;
           setTime(t);
           setPhase('work');
           setPaused(false);
-          if (!isMusicPlaying) {
+          if (autoPlay && !isMusicPlaying) {
             setMusicPlaying(true);
           }
         } else if (paused) {
           setPaused(false);
-          setMusicPlaying(true);
+          if (autoPlay) {
+            setMusicPlaying(true);
+          }
         } else {
           setPaused(true);
           setMusicPlaying(false);
@@ -762,12 +945,12 @@ export function TimerScreen() {
       }
       if (e.key === 'Escape') {
         if (deepWork) setDeepWork(false);
-        if (musicOpen) setMusicOpen(false);
+        if (musicOpen) handleCloseMusicPanel();
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [showBreakModal, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, setSelectedTrackId]);
+  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, setSelectedTrackId, handleCloseMusicPanel]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   const tickRef = useRef({ phase, paused, mode, preset });
@@ -828,10 +1011,10 @@ export function TimerScreen() {
     setTime(t);
     setPhase('work');
     setPaused(false);
-    if (!isMusicPlaying) {
+    if (autoPlay && !isMusicPlaying) {
       setMusicPlaying(true);
     }
-  }, [mode, preset, isMusicPlaying, setMusicPlaying]);
+  }, [mode, preset, autoPlay, isMusicPlaying, setMusicPlaying]);
 
   const handlePause = useCallback(() => {
     setPaused(true);
@@ -839,8 +1022,10 @@ export function TimerScreen() {
   }, [setMusicPlaying]);
   const handleResume = useCallback(() => {
     setPaused(false);
-    setMusicPlaying(true);
-  }, [setMusicPlaying]);
+    if (autoPlay) {
+      setMusicPlaying(true);
+    }
+  }, [autoPlay, setMusicPlaying]);
 
   const handleStop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -853,7 +1038,7 @@ export function TimerScreen() {
   const handleEndSession = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
-    const worked = time;
+    const worked = getWorkedSeconds();
 
     if (worked < 3 * 60) {
       handleStop();
@@ -865,15 +1050,16 @@ export function TimerScreen() {
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
-  }, [time, handleStop, setMusicPlaying]);
+  }, [getWorkedSeconds, handleStop, setMusicPlaying]);
 
   const handleStartBreak = useCallback(() => {
     setShowBreakModal(false);
     setPhase('break');
     setTime(breakDur);
     setPaused(false);
+    setMusicPlaying(false);
     setCompletedSessions((c) => c + 1);
-  }, [breakDur]);
+  }, [breakDur, setMusicPlaying]);
 
   const handleSkipBreak = useCallback(() => {
     setShowBreakModal(false);
@@ -888,12 +1074,42 @@ export function TimerScreen() {
 
     const mappedTrack = SOUND_TO_TRACK[id] ?? "deep-focus";
     setSelectedTrackId(mappedTrack);
-    setMusicPlaying(true);
-  }, [setMusicPlaying, setSelectedTrackId]);
+    setMusicPlaying(phase !== 'break');
+  }, [phase, setMusicPlaying, setSelectedTrackId]);
 
-  // Mode/Preset switching (only when idle)
+  const completeModeSwitch = useCallback((nextMode: Mode) => {
+    const worked = getWorkedSeconds();
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    setShowBreakModal(false);
+    setPendingMode(null);
+    setPaused(false);
+    setPhase('idle');
+    setMode(nextMode);
+    setTime(nextMode === 'fixed' ? WORK_DURATIONS[preset] : 0);
+    setBreakDur(0);
+    setDeepWork(false);
+    setMusicOpen(false);
+    setMusicPlaying(false);
+    setFeedbackMessage(
+      worked > 0
+        ? `Session ended at ${formatTime(worked)}.`
+        : 'Session ended.',
+    );
+  }, [getWorkedSeconds, preset, setMusicPlaying]);
+
   const handleModeSwitch = (m: Mode) => {
     if (mode === m) return;
+
+    if (phase !== 'idle') {
+      setPendingMode(m);
+      return;
+    }
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -956,6 +1172,35 @@ export function TimerScreen() {
           minHeight: 'calc(100vh - 56px)',
         }}
       >
+        <AnimatePresence>
+          {feedbackMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              style={{
+                position: 'fixed',
+                top: 76,
+                left: 0,
+                right: 0,
+                width: 'fit-content',
+                margin: '0 auto',
+                zIndex: 80,
+                background: SURFACE,
+                border: `1px solid ${BORDER}`,
+                borderRadius: 999,
+                padding: '10px 16px',
+                color: TEXT,
+                fontSize: 13,
+                fontWeight: 600,
+                boxShadow: '0 16px 36px rgba(0,0,0,0.35)',
+              }}
+            >
+              {feedbackMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Ambient glow */}
         <div
           style={{
@@ -1179,32 +1424,29 @@ export function TimerScreen() {
                 {paused ? <Play size={20} fill={TEXT} /> : <Pause size={20} />}
               </motion.button>
 
-              {/* End Session (flexible only) */}
-              {mode === 'flexible' && (
-                <motion.button
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={handleEndSession}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    padding: '12px 22px',
-                    borderRadius: 50,
-                    border: `1px solid rgba(124,92,252,0.3)`,
-                    background: 'rgba(124,92,252,0.1)',
-                    color: '#A78BFA',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <Flag size={14} />
-                  End Session
-                </motion.button>
-              )}
+              <motion.button
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={handleEndSession}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '12px 22px',
+                  borderRadius: 50,
+                  border: `1px solid rgba(124,92,252,0.3)`,
+                  background: 'rgba(124,92,252,0.1)',
+                  color: '#A78BFA',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Flag size={14} />
+                End Session
+              </motion.button>
             </>
           )}
         </div>
@@ -1290,7 +1532,14 @@ export function TimerScreen() {
           <motion.button
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.92 }}
-            onClick={() => setMusicOpen((o) => !o)}
+            onClick={() => {
+              if (musicOpen) {
+                handleCloseMusicPanel();
+                return;
+              }
+
+              setMusicOpen(true);
+            }}
             title="Focus Music"
             style={{
               width: 44,
@@ -1369,7 +1618,7 @@ export function TimerScreen() {
       <AnimatePresence>
         {musicOpen && (
           <MusicPanel
-            onClose={() => setMusicOpen(false)}
+            onClose={handleCloseMusicPanel}
             activeSound={activeSound}
             setActiveSound={handleSetActiveSound}
             volume={musicVolume}
@@ -1384,10 +1633,21 @@ export function TimerScreen() {
       <AnimatePresence>
         {showBreakModal && (
           <BreakModal
-            workedSeconds={time}
+            workedSeconds={getWorkedSeconds()}
             breakSeconds={breakDur}
             onStartBreak={handleStartBreak}
             onSkip={handleSkipBreak}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pendingMode && (
+          <ModeSwitchConfirmModal
+            targetMode={pendingMode}
+            workedSeconds={getWorkedSeconds()}
+            onConfirm={() => completeModeSwitch(pendingMode)}
+            onCancel={() => setPendingMode(null)}
           />
         )}
       </AnimatePresence>

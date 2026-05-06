@@ -1,7 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAppStore } from "@/store/use-app-store";
+
+type SafariAudioWindow = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
+
+function getAudioContextConstructor() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const audioWindow = window as SafariAudioWindow;
+  return audioWindow.AudioContext ?? audioWindow.webkitAudioContext ?? null;
+}
 
 function createNoiseBuffer(context: AudioContext): AudioBuffer {
   const bufferSize = context.sampleRate * 2;
@@ -15,6 +29,9 @@ function createNoiseBuffer(context: AudioContext): AudioBuffer {
   return buffer;
 }
 
+const FADE_OUT_TIME_CONSTANT_SECONDS = 0.18;
+const STOP_AFTER_FADE_MS = 650;
+
 export function useFocusAudioEngine() {
   const selectedTrackId = useAppStore((state) => state.selectedTrackId);
   const isMusicPlaying = useAppStore((state) => state.isMusicPlaying);
@@ -23,42 +40,115 @@ export function useFocusAudioEngine() {
   const contextRef = useRef<AudioContext | null>(null);
   const masterRef = useRef<GainNode | null>(null);
   const stopCurrentRef = useRef<(() => void) | null>(null);
+  const stopAfterFadeRef = useRef<number | null>(null);
+
+  const ensureAudioContext = useCallback(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    if (!contextRef.current) {
+      const AudioContextConstructor = getAudioContextConstructor();
+      if (!AudioContextConstructor) {
+        return null;
+      }
+
+      contextRef.current = new AudioContextConstructor();
+      masterRef.current = contextRef.current.createGain();
+      masterRef.current.gain.value = 0;
+      masterRef.current.connect(contextRef.current.destination);
+    }
+
+    if (contextRef.current.state === "suspended") {
+      void contextRef.current.resume().catch(() => {
+        // Safari may reject resume calls that are not tied to a user gesture.
+      });
+    }
+
+    return contextRef.current;
+  }, []);
+
+  const clearStopAfterFade = useCallback(() => {
+    if (stopAfterFadeRef.current !== null) {
+      window.clearTimeout(stopAfterFadeRef.current);
+      stopAfterFadeRef.current = null;
+    }
+  }, []);
+
+  const stopCurrentSource = useCallback(() => {
+    if (!stopCurrentRef.current) {
+      return;
+    }
+
+    const stopCurrent = stopCurrentRef.current;
+    stopCurrentRef.current = null;
+
+    try {
+      stopCurrent();
+    } catch {
+      // Oscillator/source nodes can throw if the browser already stopped them.
+    }
+  }, []);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      ensureAudioContext();
+    };
+
+    window.addEventListener("pointerdown", unlockAudio, { once: true });
+    window.addEventListener("touchend", unlockAudio, { once: true });
+    window.addEventListener("keydown", unlockAudio, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("touchend", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+  }, [ensureAudioContext]);
 
   useEffect(() => {
     if (!isMusicPlaying) {
-      if (masterRef.current) {
-        masterRef.current.gain.setTargetAtTime(
+      const context = contextRef.current;
+      const masterGain = masterRef.current;
+
+      clearStopAfterFade();
+
+      if (context && masterGain) {
+        masterGain.gain.cancelScheduledValues(context.currentTime);
+        masterGain.gain.setTargetAtTime(
           0,
-          contextRef.current?.currentTime ?? 0,
-          0.04,
+          context.currentTime,
+          FADE_OUT_TIME_CONSTANT_SECONDS,
         );
+
+        stopAfterFadeRef.current = window.setTimeout(() => {
+          stopCurrentSource();
+        }, STOP_AFTER_FADE_MS);
       }
-      return;
+
+      return () => {
+        clearStopAfterFade();
+      };
     }
 
     if (typeof window === "undefined") {
       return;
     }
 
-    if (!contextRef.current) {
-      contextRef.current = new window.AudioContext();
-      masterRef.current = contextRef.current.createGain();
-      masterRef.current.gain.value = 0;
-      masterRef.current.connect(contextRef.current.destination);
-    }
-
-    const context = contextRef.current;
+    const context = ensureAudioContext();
     const masterGain = masterRef.current;
     if (!context || !masterGain) {
       return;
     }
 
-    void context.resume();
-
-    if (stopCurrentRef.current) {
-      stopCurrentRef.current();
-      stopCurrentRef.current = null;
+    if (context.state === "suspended") {
+      void context.resume().catch(() => {
+        // Keep the UI usable even when the browser blocks audio resume.
+      });
     }
+
+    clearStopAfterFade();
+    stopCurrentSource();
 
     let cleanup: (() => void) | null = null;
 
@@ -170,13 +260,15 @@ export function useFocusAudioEngine() {
     masterGain.gain.cancelScheduledValues(context.currentTime);
     masterGain.gain.setTargetAtTime(musicVolume, context.currentTime, 0.08);
 
-    return () => {
-      if (stopCurrentRef.current) {
-        stopCurrentRef.current();
-        stopCurrentRef.current = null;
-      }
-    };
-  }, [selectedTrackId, isMusicPlaying, musicVolume]);
+    return undefined;
+  }, [
+    selectedTrackId,
+    isMusicPlaying,
+    musicVolume,
+    ensureAudioContext,
+    clearStopAfterFade,
+    stopCurrentSource,
+  ]);
 
   useEffect(() => {
     const context = contextRef.current;
@@ -193,4 +285,11 @@ export function useFocusAudioEngine() {
       0.08,
     );
   }, [musicVolume, isMusicPlaying]);
+
+  useEffect(() => {
+    return () => {
+      clearStopAfterFade();
+      stopCurrentSource();
+    };
+  }, [clearStopAfterFade, stopCurrentSource]);
 }
