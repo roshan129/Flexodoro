@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const appUrl = "http://localhost:3000";
@@ -41,15 +42,32 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeInitScript = `
+    try {
+      const stored = window.localStorage.getItem("flexodoro-store");
+      const parsed = stored ? JSON.parse(stored) : null;
+      const isDark = parsed?.state?.isDarkMode ?? true;
+      document.documentElement.classList.toggle("dark", Boolean(isDark));
+    } catch {
+      document.documentElement.classList.add("dark");
+    }
+  `;
+
   return (
-    <html lang="en" className="h-full antialiased dark">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full bg-background text-foreground font-sans">
-        {children}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

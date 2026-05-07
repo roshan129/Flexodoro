@@ -25,9 +25,9 @@ export function SettingsPanel() {
           <button
             type="button"
             onClick={toggleDarkMode}
-            className="mt-2 w-full rounded-md border border-border px-3 py-2 text-sm font-medium transition hover:bg-white/5"
+            className="mt-2 w-full rounded-md border border-border px-3 py-2 text-sm font-medium transition hover:bg-surface-2"
           >
-            {isDarkMode ? "Dark" : "Light"}
+            {isDarkMode ? "Dark mode" : "Light mode"}
           </button>
         </label>
 

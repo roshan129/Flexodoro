@@ -17,12 +17,12 @@ import {
   Wind,
 } from "lucide-react";
 
-const BG = '#07070F';
-const SURFACE = '#0F0F1A';
-const BORDER = 'rgba(255,255,255,0.07)';
+const BG = 'var(--background)';
+const SURFACE = 'var(--surface)';
+const BORDER = 'var(--border)';
 const ACCENT = '#7C5CFC';
-const TEXT = '#E8E8F0';
-const MUTED = '#66667A';
+const TEXT = 'var(--foreground)';
+const MUTED = 'var(--muted)';
 
 function TimerPreview() {
   const RADIUS = 54;
@@ -83,7 +83,7 @@ function TimerPreview() {
             cy="70"
             r={RADIUS}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--subtle-fill-strong)"
             strokeWidth="5"
           />
           <motion.circle
@@ -307,7 +307,7 @@ export function LandingPage() {
           position: 'sticky',
           top: 0,
           zIndex: 50,
-          background: 'rgba(7,7,15,0.9)',
+          background: 'var(--nav-bg)',
           backdropFilter: 'blur(12px)',
         }}
       >
@@ -341,7 +341,7 @@ export function LandingPage() {
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontWeight: 700,
                 fontSize: 17,
-                color: '#F0F0FA',
+                color: TEXT,
                 letterSpacing: '-0.02em',
               }}
             >
@@ -414,7 +414,7 @@ export function LandingPage() {
             top: 0,
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 600,
+            width: 'min(600px, 100%)',
             height: 400,
             background: 'radial-gradient(ellipse at center, rgba(124,92,252,0.12) 0%, transparent 70%)',
             pointerEvents: 'none',
@@ -451,7 +451,7 @@ export function LandingPage() {
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 'clamp(40px, 6vw, 72px)',
             fontWeight: 700,
-            color: '#F0F0FA',
+            color: TEXT,
             letterSpacing: '-0.04em',
             lineHeight: 1.1,
             marginBottom: 24,
@@ -476,7 +476,7 @@ export function LandingPage() {
           transition={{ duration: 0.6, delay: 0.2 }}
           style={{
             fontSize: 17,
-            color: '#888899',
+            color: MUTED,
             lineHeight: 1.7,
             maxWidth: 500,
             marginBottom: 40,
@@ -567,7 +567,7 @@ export function LandingPage() {
               fontFamily: "'Space Grotesk', sans-serif",
               fontSize: 'clamp(28px, 4vw, 42px)',
               fontWeight: 700,
-              color: '#F0F0FA',
+              color: TEXT,
               letterSpacing: '-0.03em',
               lineHeight: 1.2,
               marginBottom: 16,
@@ -584,7 +584,7 @@ export function LandingPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
             gap: 16,
           }}
         >
@@ -644,7 +644,7 @@ export function LandingPage() {
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontSize: 'clamp(28px, 4vw, 42px)',
                 fontWeight: 700,
-                color: '#F0F0FA',
+                color: TEXT,
                 letterSpacing: '-0.03em',
                 lineHeight: 1.2,
               }}
@@ -656,7 +656,7 @@ export function LandingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
               gap: 24,
               position: 'relative',
             }}
@@ -685,7 +685,7 @@ export function LandingPage() {
                     fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: 48,
                     fontWeight: 800,
-                    color: 'rgba(255,255,255,0.03)',
+                    color: 'var(--subtle-fill)',
                     lineHeight: 1,
                   }}
                 >
@@ -818,7 +818,7 @@ export function LandingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
               gap: 48,
               alignItems: 'center',
             }}
@@ -832,7 +832,7 @@ export function LandingPage() {
                   fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: 'clamp(26px, 3.5vw, 40px)',
                   fontWeight: 700,
-                  color: '#F0F0FA',
+                  color: TEXT,
                   letterSpacing: '-0.03em',
                   lineHeight: 1.2,
                   marginBottom: 16,
@@ -860,7 +860,7 @@ export function LandingPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))',
                 gap: 12,
               }}
             >
@@ -924,7 +924,7 @@ export function LandingPage() {
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontSize: 'clamp(24px, 3.5vw, 38px)',
                 fontWeight: 700,
-                color: '#F0F0FA',
+                color: TEXT,
                 letterSpacing: '-0.03em',
                 marginBottom: 12,
               }}
@@ -939,7 +939,7 @@ export function LandingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
               gap: 16,
             }}
           >
@@ -986,7 +986,7 @@ export function LandingPage() {
               fontFamily: "'Space Grotesk', sans-serif",
               fontSize: 'clamp(32px, 5vw, 56px)',
               fontWeight: 700,
-              color: '#F0F0FA',
+              color: TEXT,
               letterSpacing: '-0.04em',
               lineHeight: 1.1,
               marginBottom: 20,

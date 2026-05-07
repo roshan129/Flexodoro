@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart2, Timer, Zap, Moon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { BarChart2, Timer, Zap, Moon, Sun } from "lucide-react";
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
+import { useAppStore } from "@/store/use-app-store";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [deepWorkHint, setDeepWorkHint] = useState(false);
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const toggleDarkMode = useAppStore((state) => state.toggleDarkMode);
 
   const timerActive = pathname === "/app";
   const statsActive = pathname === "/app/stats";
@@ -18,15 +20,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div
       className="min-h-screen flex flex-col"
       style={{
-        background: "#07070F",
+        background: "var(--background)",
         fontFamily: "'Inter', sans-serif",
-        color: "#E8E8F0",
+        color: "var(--foreground)",
       }}
     >
       <header
         style={{
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(7,7,15,0.95)",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--nav-bg)",
           backdropFilter: "blur(12px)",
           position: "sticky",
           top: 0,
@@ -53,7 +55,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontWeight: 600,
                 fontSize: 16,
-                color: "#F0F0FA",
+                color: "var(--foreground)",
                 letterSpacing: "-0.02em",
               }}
             >
@@ -72,7 +74,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 500,
-                color: timerActive ? "#A78BFA" : "#888899",
+                color: timerActive ? "#A78BFA" : "var(--muted)",
                 background: timerActive ? "rgba(124, 92, 252, 0.1)" : "transparent",
                 textDecoration: "none",
                 transition: "all 0.15s ease",
@@ -91,7 +93,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 500,
-                color: statsActive ? "#A78BFA" : "#888899",
+                color: statsActive ? "#A78BFA" : "var(--muted)",
                 background: statsActive ? "rgba(124, 92, 252, 0.1)" : "transparent",
                 textDecoration: "none",
                 transition: "all 0.15s ease",
@@ -106,42 +108,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onMouseEnter={() => setDeepWorkHint(true)}
-              onMouseLeave={() => setDeepWorkHint(false)}
+              onClick={toggleDarkMode}
+              aria-label="Toggle color theme"
               style={{
                 position: "relative",
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border)",
+                background: "var(--subtle-fill)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                color: "#888899",
+                color: "var(--muted)",
               }}
             >
-              <Moon size={14} />
-              {deepWorkHint && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    right: 0,
-                    marginTop: 6,
-                    background: "#1A1A2E",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 6,
-                    padding: "4px 8px",
-                    fontSize: 11,
-                    whiteSpace: "nowrap",
-                    color: "#888899",
-                  }}
-                >
-                  Deep Work (in Timer)
-                </div>
-              )}
+              {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
             </motion.button>
           </div>
         </div>

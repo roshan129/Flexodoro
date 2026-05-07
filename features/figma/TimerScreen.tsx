@@ -23,13 +23,13 @@ import {
 } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const SURFACE = '#0F0F1A';
-const SURFACE2 = '#161625';
-const BORDER = 'rgba(255,255,255,0.07)';
+const SURFACE = 'var(--surface)';
+const SURFACE2 = 'var(--surface-2)';
+const BORDER = 'var(--border)';
 const ACCENT = '#7C5CFC';
 const BREAK_COLOR = '#10B981';
-const TEXT = '#E8E8F0';
-const MUTED = '#66667A';
+const TEXT = 'var(--foreground)';
+const MUTED = 'var(--muted)';
 const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 
 const WORK_DURATIONS = { '25/5': 25 * 60, '40/10': 40 * 60 } as const;
@@ -99,7 +99,7 @@ function ProgressRing({ progress, color }: { progress: number; color: string }) 
         cy="150"
         r={RING_RADIUS}
         fill="none"
-        stroke="rgba(255,255,255,0.05)"
+        stroke="var(--subtle-fill-strong)"
         strokeWidth="5"
       />
       {/* Glow ring (behind) */}
@@ -184,7 +184,7 @@ function BreakModal({
         exit={{ opacity: 0, scale: 0.9, y: 10 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         style={{
-          background: '#0F0F1A',
+          background: SURFACE,
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 20,
           padding: 40,
@@ -456,7 +456,7 @@ function ModeSwitchConfirmModal({
               padding: '12px 16px',
               borderRadius: 12,
               border: `1px solid ${BORDER}`,
-              background: 'rgba(255,255,255,0.04)',
+              background: 'var(--subtle-fill)',
               color: MUTED,
               fontSize: 13,
               fontWeight: 600,
@@ -547,7 +547,7 @@ function MusicPanel({
             height: 24,
             borderRadius: 6,
             border: 'none',
-            background: 'rgba(255,255,255,0.06)',
+            background: 'var(--subtle-fill-strong)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -576,7 +576,7 @@ function MusicPanel({
                 padding: '10px 12px',
                 borderRadius: 10,
                 border: isActive ? `1px solid ${sound.color}40` : `1px solid transparent`,
-                background: isActive ? `${sound.color}12` : 'rgba(255,255,255,0.03)',
+                background: isActive ? `${sound.color}12` : 'var(--subtle-fill)',
                 cursor: 'pointer',
                 textAlign: 'left',
                 transition: 'all 0.15s ease',
@@ -670,7 +670,7 @@ function MusicPanel({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 12px',
-          background: 'rgba(255,255,255,0.03)',
+          background: 'var(--subtle-fill)',
           borderRadius: 10,
           border: `1px solid ${BORDER}`,
         }}
@@ -1569,7 +1569,7 @@ export function TimerScreen() {
                   height: 8,
                   borderRadius: '50%',
                   background: '#10B981',
-                  border: '2px solid #07070F',
+                  border: '2px solid var(--background)',
                 }}
               />
             )}

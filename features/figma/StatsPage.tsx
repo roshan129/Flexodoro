@@ -24,13 +24,13 @@ import {
 } from 'lucide-react';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const BG = '#07070F';
-const SURFACE = '#0F0F1A';
-const SURFACE2 = '#161625';
-const BORDER = 'rgba(255,255,255,0.07)';
+const BG = 'var(--background)';
+const SURFACE = 'var(--surface)';
+const SURFACE2 = 'var(--surface-2)';
+const BORDER = 'var(--border)';
 const ACCENT = '#7C5CFC';
-const TEXT = '#E8E8F0';
-const MUTED = '#66667A';
+const TEXT = 'var(--foreground)';
+const MUTED = 'var(--muted)';
 const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ function GoalRing({ progress, size = 80 }: { progress: number; size?: number }) 
         cy={size / 2}
         r={r}
         fill="none"
-        stroke="rgba(255,255,255,0.06)"
+        stroke="var(--subtle-fill-strong)"
         strokeWidth="6"
       />
       <motion.circle
@@ -269,7 +269,7 @@ export function StatsPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
             gap: 14,
             marginBottom: 32,
           }}
@@ -319,9 +319,10 @@ export function StatsPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 260px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
             gap: 16,
             marginBottom: 24,
+            alignItems: 'stretch',
           }}
         >
           {/* Focus time chart */}
@@ -515,7 +516,7 @@ export function StatsPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
             gap: 16,
           }}
         >
