@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart2, Timer, Zap, Moon } from "lucide-react";
+import { BarChart2, Timer, Zap, Moon, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { useAppStore } from "@/store/use-app-store";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [deepWorkHint, setDeepWorkHint] = useState(false);
+  const [showStatsComingSoon, setShowStatsComingSoon] = useState(false);
+  const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const toggleDarkMode = useAppStore((state) => state.toggleDarkMode);
 
   const timerActive = pathname === "/app";
   const statsActive = pathname === "/app/stats";
@@ -18,15 +21,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div
       className="min-h-screen flex flex-col"
       style={{
-        background: "#07070F",
+        background: "var(--background)",
         fontFamily: "'Inter', sans-serif",
-        color: "#E8E8F0",
+        color: "var(--foreground)",
       }}
     >
       <header
         style={{
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "rgba(7,7,15,0.95)",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--nav-bg)",
           backdropFilter: "blur(12px)",
           position: "sticky",
           top: 0,
@@ -53,7 +56,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontWeight: 600,
                 fontSize: 16,
-                color: "#F0F0FA",
+                color: "var(--foreground)",
                 letterSpacing: "-0.02em",
               }}
             >
@@ -72,7 +75,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 500,
-                color: timerActive ? "#A78BFA" : "#888899",
+                color: timerActive ? "#A78BFA" : "var(--muted)",
                 background: timerActive ? "rgba(124, 92, 252, 0.1)" : "transparent",
                 textDecoration: "none",
                 transition: "all 0.15s ease",
@@ -81,8 +84,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Timer size={14} />
               Timer
             </Link>
-            <Link
-              href="/app/stats"
+            <button
+              type="button"
+              onClick={() => setShowStatsComingSoon(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -91,63 +95,120 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 500,
-                color: statsActive ? "#A78BFA" : "#888899",
+                color: statsActive ? "#A78BFA" : "var(--muted)",
                 background: statsActive ? "rgba(124, 92, 252, 0.1)" : "transparent",
-                textDecoration: "none",
+                border: "none",
+                cursor: "pointer",
                 transition: "all 0.15s ease",
               }}
             >
               <BarChart2 size={14} />
               Stats
-            </Link>
+            </button>
           </nav>
 
           <div className="flex items-center gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onMouseEnter={() => setDeepWorkHint(true)}
-              onMouseLeave={() => setDeepWorkHint(false)}
+              onClick={toggleDarkMode}
+              aria-label="Toggle color theme"
               style={{
                 position: "relative",
                 width: 32,
                 height: 32,
                 borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.08)",
-                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border)",
+                background: "var(--subtle-fill)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                color: "#888899",
+                color: "var(--muted)",
               }}
             >
-              <Moon size={14} />
-              {deepWorkHint && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    right: 0,
-                    marginTop: 6,
-                    background: "#1A1A2E",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 6,
-                    padding: "4px 8px",
-                    fontSize: 11,
-                    whiteSpace: "nowrap",
-                    color: "#888899",
-                  }}
-                >
-                  Deep Work (in Timer)
-                </div>
-              )}
+              {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
             </motion.button>
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex flex-col">{children}</main>
+
+      <AnimatePresence>
+        {showStatsComingSoon ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+              zIndex: 80,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.98 }}
+              style={{
+                width: "min(420px, 100%)",
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 14,
+                padding: 20,
+                boxShadow: "0 24px 48px rgba(0,0,0,0.25)",
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: "var(--foreground)",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Stats Coming Soon
+              </h2>
+              <p
+                style={{
+                  marginTop: 8,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: "var(--muted)",
+                }}
+              >
+                We&apos;re polishing insights and progress tracking. This section will be available soon.
+              </p>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowStatsComingSoon(false)}
+                  style={{
+                    background: "rgba(124, 92, 252, 0.12)",
+                    border: "1px solid rgba(124, 92, 252, 0.3)",
+                    color: "#7C5CFC",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Got it
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

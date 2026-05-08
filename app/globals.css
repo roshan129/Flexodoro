@@ -6,10 +6,16 @@
   --background: #f5f5fb;
   --foreground: #0d1020;
   --surface: #ffffff;
-  --muted: #66667a;
+  --surface-2: #ececf7;
+  --muted: #62647a;
   --primary: #7c5cfc;
   --primary-foreground: #ffffff;
   --border: rgba(15, 18, 35, 0.12);
+  --nav-bg: rgba(245, 245, 251, 0.9);
+  --subtle-fill: rgba(13, 16, 32, 0.04);
+  --subtle-fill-strong: rgba(13, 16, 32, 0.08);
+  --grid-line: rgba(13, 16, 32, 0.05);
+  --card-shadow: 0 24px 50px -42px rgba(15, 18, 35, 0.45);
   --space-section: clamp(1.5rem, 2vw, 2.25rem);
 }
 
@@ -17,6 +23,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-muted: var(--muted);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -33,10 +40,16 @@
   --background: #07070f;
   --foreground: #e8e8f0;
   --surface: #0f0f1a;
-  --muted: #66667a;
+  --surface-2: #161625;
+  --muted: #8b8ba3;
   --primary: #7c5cfc;
   --primary-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.07);
+  --nav-bg: rgba(7, 7, 15, 0.9);
+  --subtle-fill: rgba(255, 255, 255, 0.04);
+  --subtle-fill-strong: rgba(255, 255, 255, 0.08);
+  --grid-line: rgba(255, 255, 255, 0.04);
+  --card-shadow: 0 24px 50px -42px rgba(0, 0, 0, 0.75);
 }
 
 body {
@@ -54,7 +67,7 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  box-shadow: 0 24px 50px -42px rgba(0, 0, 0, 0.75);
+  box-shadow: var(--card-shadow);
 }
 
 .btn-primary {
@@ -81,8 +94,8 @@ body {
 
 .brand-grid {
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
