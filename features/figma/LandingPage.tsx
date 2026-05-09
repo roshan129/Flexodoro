@@ -372,7 +372,7 @@ export function LandingPage() {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => router.push("/app")}
+            onClick={() => router.push("/")}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -495,7 +495,7 @@ export function LandingPage() {
           <motion.button
             whileHover={{ scale: 1.04, boxShadow: '0 8px 32px rgba(124,92,252,0.45)' }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => router.push("/app")}
+            onClick={() => router.push("/")}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1010,7 +1010,7 @@ export function LandingPage() {
           <motion.button
             whileHover={{ scale: 1.04, boxShadow: '0 12px 48px rgba(124,92,252,0.5)' }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => router.push("/app")}
+            onClick={() => router.push("/")}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

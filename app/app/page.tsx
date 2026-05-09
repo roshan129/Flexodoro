@@ -1,5 +1,5 @@
-import { TimerScreen } from "@/features/figma/TimerScreen";
+import { redirect } from "next/navigation";
 
 export default function TimerPage() {
-  return <TimerScreen />;
+  redirect("/");
 }

@@ -860,7 +860,7 @@ export function TimerScreen() {
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [deepWork, setDeepWork] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
-  const [autoPlay, setAutoPlay] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(false);
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
