@@ -58,7 +58,7 @@ function TimerPreview() {
             fontWeight: 600,
           }}
         >
-          FIXED
+          FLEXIBLE
         </div>
         <div
           style={{
@@ -71,7 +71,7 @@ function TimerPreview() {
             fontWeight: 500,
           }}
         >
-          FLEXIBLE
+          FIXED
         </div>
       </div>
 
@@ -589,15 +589,15 @@ export function LandingPage() {
           }}
         >
           <FeatureCard
-            icon={<Clock size={20} />}
-            title="Fixed Pomodoro Mode"
-            description="Classic 25/5 or 40/10 presets for structured focus sessions with automatic break timers."
-          />
-          <FeatureCard
             icon={<Zap size={20} />}
             title="Flexible Flow Mode"
             description="Work freely for as long as you need. Flexodoro calculates the perfect break based on your work duration."
             accent="#A78BFA"
+          />
+          <FeatureCard
+            icon={<Clock size={20} />}
+            title="Fixed Pomodoro Mode"
+            description="Classic 25/5 or 40/10 presets for structured focus sessions with automatic break timers."
           />
           <FeatureCard
             icon={<Music size={20} />}
