@@ -66,7 +66,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           <nav className="flex items-center gap-1">
             <Link
-              href="/app"
+              href="/"
               style={{
                 display: "flex",
                 alignItems: "center",

@@ -1,5 +1,10 @@
-import { LandingPage } from "@/features/figma/LandingPage";
+import { AppLayout } from "@/features/figma/AppLayout";
+import { TimerScreen } from "@/features/figma/TimerScreen";
 
 export default function Home() {
-  return <LandingPage />;
+  return (
+    <AppLayout>
+      <TimerScreen />
+    </AppLayout>
+  );
 }
