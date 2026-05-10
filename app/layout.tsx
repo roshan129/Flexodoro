@@ -2,7 +2,22 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+function resolveSiteUrl(rawUrl: string): string {
+  if (rawUrl.includes("localhost")) {
+    return rawUrl;
+  }
+
+  const parsed = new URL(rawUrl);
+  if (!parsed.hostname.startsWith("www.")) {
+    parsed.hostname = `www.${parsed.hostname}`;
+  }
+
+  return parsed.toString().replace(/\/$/, "");
+}
+
+const appUrl = resolveSiteUrl(
+  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+);
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
