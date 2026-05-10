@@ -958,6 +958,7 @@ export function TimerScreen() {
       if (e.code === 'Space' && !showBreakModal && !pendingMode) {
         e.preventDefault();
         if (phase === 'idle') {
+          playTapSound();
           const t = mode === 'fixed' ? WORK_DURATIONS[preset] : 0;
           setTime(t);
           setPhase('work');
@@ -966,11 +967,13 @@ export function TimerScreen() {
             setMusicPlaying(true);
           }
         } else if (paused) {
+          playTapSound();
           setPaused(false);
           if (autoPlay) {
             setMusicPlaying(true);
           }
         } else {
+          playTapSound();
           setPaused(true);
           setMusicPlaying(false);
         }
@@ -982,7 +985,7 @@ export function TimerScreen() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, setSelectedTrackId, handleCloseMusicPanel]);
+  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, setSelectedTrackId, handleCloseMusicPanel, playTapSound]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   const tickRef = useRef({ phase, paused, mode, preset });
