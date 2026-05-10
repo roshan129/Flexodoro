@@ -865,6 +865,8 @@ export function TimerScreen() {
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
   const intervalRef = useRef<number | null>(null);
+  const tapSoundRef = useRef<HTMLAudioElement | null>(null);
+  const bellSoundRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -882,6 +884,36 @@ export function TimerScreen() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(MODE_STORAGE_KEY, mode);
   }, [mode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    tapSoundRef.current = new Audio('/sounds/tap_notification.mp3');
+    tapSoundRef.current.preload = 'auto';
+
+    bellSoundRef.current = new Audio('/sounds/bell_notification.mp3');
+    bellSoundRef.current.preload = 'auto';
+  }, []);
+
+  const playTapSound = useCallback(() => {
+    const tap = tapSoundRef.current;
+    if (!tap) return;
+
+    tap.currentTime = 0;
+    void tap.play().catch(() => {
+      // Ignore browser autoplay/gesture blocks.
+    });
+  }, []);
+
+  const playBellSound = useCallback(() => {
+    const bell = bellSoundRef.current;
+    if (!bell) return;
+
+    bell.currentTime = 0;
+    void bell.play().catch(() => {
+      // Ignore browser autoplay/gesture blocks.
+    });
+  }, []);
 
   const isTimerRunning = phase !== 'idle' && !paused;
   const activeSound = isMusicPlaying ? TRACK_TO_SOUND[selectedTrackId] : null;
@@ -985,10 +1017,12 @@ export function TimerScreen() {
               setTime(bd);
               setPhase('break');
               setCompletedSessions((c) => c + 1);
+              playBellSound();
             } else if (p === 'break') {
               const wd = WORK_DURATIONS[pr];
               setTime(wd);
               setPhase('idle');
+              playBellSound();
             }
           }, 50);
           return 0;
@@ -1003,10 +1037,11 @@ export function TimerScreen() {
         intervalRef.current = null;
       }
     };
-  }, [phase, paused]);
+  }, [phase, paused, playBellSound]);
 
   // ─── Actions ────────────────────────────────────────────────────────────────
   const handleStart = useCallback(() => {
+    playTapSound();
     const t = mode === 'fixed' ? WORK_DURATIONS[preset] : 0;
     setTime(t);
     setPhase('work');
@@ -1014,18 +1049,20 @@ export function TimerScreen() {
     if (autoPlay && !isMusicPlaying) {
       setMusicPlaying(true);
     }
-  }, [mode, preset, autoPlay, isMusicPlaying, setMusicPlaying]);
+  }, [mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, playTapSound]);
 
   const handlePause = useCallback(() => {
+    playTapSound();
     setPaused(true);
     setMusicPlaying(false);
-  }, [setMusicPlaying]);
+  }, [setMusicPlaying, playTapSound]);
   const handleResume = useCallback(() => {
+    playTapSound();
     setPaused(false);
     if (autoPlay) {
       setMusicPlaying(true);
     }
-  }, [autoPlay, setMusicPlaying]);
+  }, [autoPlay, setMusicPlaying, playTapSound]);
 
   const handleStop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -1036,6 +1073,7 @@ export function TimerScreen() {
   }, [mode, preset, setMusicPlaying]);
 
   const handleEndSession = useCallback(() => {
+    playTapSound();
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     const worked = getWorkedSeconds();
@@ -1050,7 +1088,7 @@ export function TimerScreen() {
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
-  }, [getWorkedSeconds, handleStop, setMusicPlaying]);
+  }, [getWorkedSeconds, handleStop, setMusicPlaying, playTapSound]);
 
   const handleStartBreak = useCallback(() => {
     setShowBreakModal(false);
