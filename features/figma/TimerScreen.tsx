@@ -44,6 +44,13 @@ type Mode = 'fixed' | 'flexible';
 type Preset = '25/5' | '40/10';
 type Phase = 'idle' | 'work' | 'break';
 
+type TimerTiming = {
+  startedAtMs: number | null;
+  pausedAtMs: number | null;
+  accumulatedPausedMs: number;
+  durationSeconds: number | null;
+};
+
 type Sound = { id: string; label: string; icon: ReactNode; color: string };
 const SOUNDS: Sound[] = [
   { id: 'rain', label: 'Rain', icon: <Waves size={16} />, color: '#06B6D4' },
@@ -78,6 +85,68 @@ function calcSuggestedBreak(workedSeconds: number): number {
   const mins = workedSeconds / 60;
   const breakMins = Math.round(mins / 5);
   return Math.max(1, Math.min(30, breakMins)) * 60;
+}
+
+function getElapsedSecondsFromTiming(timing: TimerTiming, atMs = Date.now()) {
+  const { startedAtMs, pausedAtMs, accumulatedPausedMs } = timing;
+  if (startedAtMs === null) {
+    return 0;
+  }
+
+  const effectiveNow = pausedAtMs ?? atMs;
+  return Math.max(0, Math.floor((effectiveNow - startedAtMs - accumulatedPausedMs) / 1000));
+}
+
+function getDisplaySecondsFromTiming({
+  timing,
+  atMs,
+  phase,
+  mode,
+  preset,
+  breakDur,
+}: {
+  timing: TimerTiming;
+  atMs: number;
+  phase: Phase;
+  mode: Mode;
+  preset: Preset;
+  breakDur: number;
+}) {
+  if (phase === 'idle') {
+    return mode === 'fixed' ? WORK_DURATIONS[preset] : 0;
+  }
+
+  const elapsedSeconds = getElapsedSecondsFromTiming(timing, atMs);
+  const durationSeconds =
+    timing.durationSeconds ??
+    (phase === 'break' ? breakDur : mode === 'fixed' ? WORK_DURATIONS[preset] : null);
+
+  if (phase === 'work' && mode === 'flexible') {
+    return elapsedSeconds;
+  }
+
+  return Math.max(0, (durationSeconds ?? 0) - elapsedSeconds);
+}
+
+function getWorkedSecondsFromTiming({
+  timing,
+  atMs,
+  phase,
+  mode,
+  preset,
+}: {
+  timing: TimerTiming;
+  atMs: number;
+  phase: Phase;
+  mode: Mode;
+  preset: Preset;
+}) {
+  if (phase !== 'work') {
+    return 0;
+  }
+
+  const elapsedSeconds = getElapsedSecondsFromTiming(timing, atMs);
+  return mode === 'fixed' ? Math.min(WORK_DURATIONS[preset], elapsedSeconds) : elapsedSeconds;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -855,7 +924,7 @@ export function TimerScreen() {
   const [preset, setPreset] = useState<Preset>('25/5');
   const [phase, setPhase] = useState<Phase>('idle');
   const [paused, setPaused] = useState(false);
-  const [time, setTime] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [breakDur, setBreakDur] = useState(0);
   const [showBreakModal, setShowBreakModal] = useState(false);
   const [deepWork, setDeepWork] = useState(false);
@@ -865,8 +934,77 @@ export function TimerScreen() {
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
   const intervalRef = useRef<number | null>(null);
+  const [timing, setTiming] = useState<TimerTiming>({
+    startedAtMs: null,
+    pausedAtMs: null,
+    accumulatedPausedMs: 0,
+    durationSeconds: null,
+  });
+  const timingRef = useRef<TimerTiming>({
+    startedAtMs: null,
+    pausedAtMs: null,
+    accumulatedPausedMs: 0,
+    durationSeconds: null,
+  });
+  const isTransitioningRef = useRef(false);
   const tapSoundRef = useRef<HTMLAudioElement | null>(null);
   const bellSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  const setTimingSnapshot = useCallback((nextTiming: TimerTiming) => {
+    timingRef.current = nextTiming;
+    setTiming(nextTiming);
+  }, []);
+
+  const resetTiming = useCallback((nextNow = Date.now()) => {
+    setTimingSnapshot({
+      startedAtMs: null,
+      pausedAtMs: null,
+      accumulatedPausedMs: 0,
+      durationSeconds: null,
+    });
+    setNowMs(nextNow);
+  }, [setTimingSnapshot]);
+
+  const startPhaseTiming = useCallback((durationSeconds: number | null, nextNow = Date.now()) => {
+    setTimingSnapshot({
+      startedAtMs: nextNow,
+      pausedAtMs: null,
+      accumulatedPausedMs: 0,
+      durationSeconds,
+    });
+    setNowMs(nextNow);
+  }, [setTimingSnapshot]);
+
+  const pauseTiming = useCallback((nextNow = Date.now()) => {
+    if (timingRef.current.startedAtMs === null || timingRef.current.pausedAtMs !== null) {
+      return;
+    }
+
+    setTimingSnapshot({
+      ...timingRef.current,
+      pausedAtMs: nextNow,
+    });
+    setNowMs(nextNow);
+  }, [setTimingSnapshot]);
+
+  const resumeTiming = useCallback((nextNow = Date.now()) => {
+    const { pausedAtMs } = timingRef.current;
+    if (pausedAtMs === null) {
+      return;
+    }
+
+    setTimingSnapshot({
+      ...timingRef.current,
+      pausedAtMs: null,
+      accumulatedPausedMs:
+        timingRef.current.accumulatedPausedMs + Math.max(0, nextNow - pausedAtMs),
+    });
+    setNowMs(nextNow);
+  }, [setTimingSnapshot]);
+
+  const getElapsedSeconds = useCallback((atMs = Date.now()) => {
+    return getElapsedSecondsFromTiming(timingRef.current, atMs);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -874,11 +1012,11 @@ export function TimerScreen() {
     if (savedMode === 'fixed' || savedMode === 'flexible') {
       const frame = window.requestAnimationFrame(() => {
         setMode(savedMode);
-        setTime(savedMode === 'fixed' ? WORK_DURATIONS['25/5'] : 0);
+        resetTiming();
       });
       return () => window.cancelAnimationFrame(frame);
     }
-  }, []);
+  }, [resetTiming]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -943,14 +1081,14 @@ export function TimerScreen() {
   }, [feedbackMessage]);
 
   const getWorkedSeconds = useCallback(() => {
-    if (phase !== 'work') {
-      return 0;
-    }
-
-    return mode === 'fixed'
-      ? Math.max(0, WORK_DURATIONS[preset] - time)
-      : Math.max(0, time);
-  }, [mode, phase, preset, time]);
+    return getWorkedSecondsFromTiming({
+      timing: timingRef.current,
+      atMs: Date.now(),
+      phase,
+      mode,
+      preset,
+    });
+  }, [mode, phase, preset]);
 
   // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -959,8 +1097,7 @@ export function TimerScreen() {
         e.preventDefault();
         if (phase === 'idle') {
           playTapSound();
-          const t = mode === 'fixed' ? WORK_DURATIONS[preset] : 0;
-          setTime(t);
+          startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
           setPhase('work');
           setPaused(false);
           if (autoPlay && !isMusicPlaying) {
@@ -968,12 +1105,14 @@ export function TimerScreen() {
           }
         } else if (paused) {
           playTapSound();
+          resumeTiming();
           setPaused(false);
           if (autoPlay) {
             setMusicPlaying(true);
           }
         } else {
           playTapSound();
+          pauseTiming();
           setPaused(true);
           setMusicPlaying(false);
         }
@@ -985,14 +1124,51 @@ export function TimerScreen() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, setSelectedTrackId, handleCloseMusicPanel, playTapSound]);
+  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, handleCloseMusicPanel, playTapSound, pauseTiming, resumeTiming, startPhaseTiming]);
+
+  const refreshTimer = useCallback(() => {
+    const nextNow = Date.now();
+    setNowMs(nextNow);
+
+    if (phase === 'idle' || paused || isTransitioningRef.current) {
+      return;
+    }
+
+    const durationSeconds =
+      timingRef.current.durationSeconds ??
+      (phase === 'break' ? breakDur : mode === 'fixed' ? WORK_DURATIONS[preset] : null);
+
+    if (durationSeconds === null) {
+      return;
+    }
+
+    if (getElapsedSeconds(nextNow) < durationSeconds) {
+      return;
+    }
+
+    isTransitioningRef.current = true;
+
+    if (phase === 'work' && mode === 'fixed') {
+      const nextBreakDuration = BREAK_DURATIONS[preset];
+      setBreakDur(nextBreakDuration);
+      startPhaseTiming(nextBreakDuration, nextNow);
+      setPhase('break');
+      setPaused(false);
+      setCompletedSessions((c) => c + 1);
+      playBellSound();
+    } else if (phase === 'break') {
+      resetTiming(nextNow);
+      setPhase('idle');
+      setPaused(false);
+      playBellSound();
+    }
+
+    window.setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 0);
+  }, [breakDur, getElapsedSeconds, mode, paused, phase, playBellSound, preset, resetTiming, startPhaseTiming]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
-  const tickRef = useRef({ phase, paused, mode, preset });
-  useEffect(() => {
-    tickRef.current = { phase, paused, mode, preset };
-  });
-
   useEffect(() => {
     if (phase === 'idle' || paused) {
       if (intervalRef.current) {
@@ -1002,78 +1178,55 @@ export function TimerScreen() {
       return;
     }
 
-    intervalRef.current = window.setInterval(() => {
-      const { phase: p, mode: m, preset: pr } = tickRef.current;
-
-      if (p === 'work' && m === 'flexible') {
-        setTime((prev) => prev + 1);
-        return;
-      }
-
-      setTime((prev) => {
-        if (prev <= 1) {
-          // Schedule transition
-          setTimeout(() => {
-            if (p === 'work' && m === 'fixed') {
-              const bd = BREAK_DURATIONS[pr];
-              setBreakDur(bd);
-              setTime(bd);
-              setPhase('break');
-              setCompletedSessions((c) => c + 1);
-              playBellSound();
-            } else if (p === 'break') {
-              const wd = WORK_DURATIONS[pr];
-              setTime(wd);
-              setPhase('idle');
-              playBellSound();
-            }
-          }, 50);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const initialRefreshId = window.setTimeout(refreshTimer, 0);
+    intervalRef.current = window.setInterval(refreshTimer, 1000);
+    window.addEventListener('focus', refreshTimer);
+    document.addEventListener('visibilitychange', refreshTimer);
 
     return () => {
+      window.clearTimeout(initialRefreshId);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      window.removeEventListener('focus', refreshTimer);
+      document.removeEventListener('visibilitychange', refreshTimer);
     };
-  }, [phase, paused, playBellSound]);
+  }, [phase, paused, refreshTimer]);
 
   // ─── Actions ────────────────────────────────────────────────────────────────
   const handleStart = useCallback(() => {
     playTapSound();
-    const t = mode === 'fixed' ? WORK_DURATIONS[preset] : 0;
-    setTime(t);
+    startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
     setPhase('work');
     setPaused(false);
     if (autoPlay && !isMusicPlaying) {
       setMusicPlaying(true);
     }
-  }, [mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, playTapSound]);
+  }, [mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, playTapSound, startPhaseTiming]);
 
   const handlePause = useCallback(() => {
     playTapSound();
+    pauseTiming();
     setPaused(true);
     setMusicPlaying(false);
-  }, [setMusicPlaying, playTapSound]);
+  }, [pauseTiming, setMusicPlaying, playTapSound]);
   const handleResume = useCallback(() => {
     playTapSound();
+    resumeTiming();
     setPaused(false);
     if (autoPlay) {
       setMusicPlaying(true);
     }
-  }, [autoPlay, setMusicPlaying, playTapSound]);
+  }, [autoPlay, resumeTiming, setMusicPlaying, playTapSound]);
 
   const handleStop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setPhase('idle');
     setPaused(false);
-    setTime(mode === 'fixed' ? WORK_DURATIONS[preset] : 0);
+    resetTiming();
     setMusicPlaying(false);
-  }, [mode, preset, setMusicPlaying]);
+  }, [resetTiming, setMusicPlaying]);
 
   const handleEndSession = useCallback(() => {
     playTapSound();
@@ -1088,19 +1241,20 @@ export function TimerScreen() {
 
     const suggested = calcSuggestedBreak(worked);
     setBreakDur(suggested);
+    pauseTiming();
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
-  }, [getWorkedSeconds, handleStop, setMusicPlaying, playTapSound]);
+  }, [getWorkedSeconds, handleStop, pauseTiming, setMusicPlaying, playTapSound]);
 
   const handleStartBreak = useCallback(() => {
     setShowBreakModal(false);
     setPhase('break');
-    setTime(breakDur);
+    startPhaseTiming(breakDur);
     setPaused(false);
     setMusicPlaying(false);
     setCompletedSessions((c) => c + 1);
-  }, [breakDur, setMusicPlaying]);
+  }, [breakDur, setMusicPlaying, startPhaseTiming]);
 
   const handleSkipBreak = useCallback(() => {
     setShowBreakModal(false);
@@ -1131,7 +1285,7 @@ export function TimerScreen() {
     setPaused(false);
     setPhase('idle');
     setMode(nextMode);
-    setTime(nextMode === 'fixed' ? WORK_DURATIONS[preset] : 0);
+    resetTiming();
     setBreakDur(0);
     setDeepWork(false);
     setMusicOpen(false);
@@ -1141,7 +1295,7 @@ export function TimerScreen() {
         ? `Session ended at ${formatTime(worked)}.`
         : 'Session ended.',
     );
-  }, [getWorkedSeconds, preset, setMusicPlaying]);
+  }, [getWorkedSeconds, resetTiming, setMusicPlaying]);
 
   const handleModeSwitch = (m: Mode) => {
     if (mode === m) return;
@@ -1159,17 +1313,32 @@ export function TimerScreen() {
     setPaused(false);
     setPhase('idle');
     setMode(m);
-    setTime(m === 'fixed' ? WORK_DURATIONS[preset] : 0);
+    resetTiming();
   };
 
   const handlePresetSwitch = (p: Preset) => {
     if (phase !== 'idle') return;
     setPreset(p);
-    setTime(WORK_DURATIONS[p]);
+    resetTiming();
   };
 
   // ─── Computed values ─────────────────────────────────────────────────────────
   const ringColor = phase === 'break' ? BREAK_COLOR : ACCENT;
+  const time = getDisplaySecondsFromTiming({
+    timing,
+    atMs: nowMs,
+    phase,
+    mode,
+    preset,
+    breakDur,
+  });
+  const workedSeconds = getWorkedSecondsFromTiming({
+    timing,
+    atMs: nowMs,
+    phase,
+    mode,
+    preset,
+  });
 
   const progress = (() => {
     if (phase === 'idle') return 0;
@@ -1674,7 +1843,7 @@ export function TimerScreen() {
       <AnimatePresence>
         {showBreakModal && (
           <BreakModal
-            workedSeconds={getWorkedSeconds()}
+            workedSeconds={workedSeconds}
             breakSeconds={breakDur}
             onStartBreak={handleStartBreak}
             onSkip={handleSkipBreak}
@@ -1686,7 +1855,7 @@ export function TimerScreen() {
         {pendingMode && (
           <ModeSwitchConfirmModal
             targetMode={pendingMode}
-            workedSeconds={getWorkedSeconds()}
+            workedSeconds={workedSeconds}
             onConfirm={() => completeModeSwitch(pendingMode)}
             onCancel={() => setPendingMode(null)}
           />
