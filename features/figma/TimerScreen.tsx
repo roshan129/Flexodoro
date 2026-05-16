@@ -1090,42 +1090,6 @@ export function TimerScreen() {
     });
   }, [mode, phase, preset]);
 
-  // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !showBreakModal && !pendingMode) {
-        e.preventDefault();
-        if (phase === 'idle') {
-          playTapSound();
-          startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
-          setPhase('work');
-          setPaused(false);
-          if (autoPlay && !isMusicPlaying) {
-            setMusicPlaying(true);
-          }
-        } else if (paused) {
-          playTapSound();
-          resumeTiming();
-          setPaused(false);
-          if (autoPlay) {
-            setMusicPlaying(true);
-          }
-        } else {
-          playTapSound();
-          pauseTiming();
-          setPaused(true);
-          setMusicPlaying(false);
-        }
-      }
-      if (e.key === 'Escape') {
-        if (deepWork) setDeepWork(false);
-        if (musicOpen) handleCloseMusicPanel();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, handleCloseMusicPanel, playTapSound, pauseTiming, resumeTiming, startPhaseTiming]);
-
   const refreshTimer = useCallback(() => {
     const nextNow = Date.now();
     setNowMs(nextNow);
@@ -1260,6 +1224,68 @@ export function TimerScreen() {
     setShowBreakModal(false);
     handleStop();
   }, [handleStop]);
+
+  // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      const hasBlockingModal = showBreakModal || pendingMode;
+
+      if (e.code === 'Space' && !hasBlockingModal) {
+        e.preventDefault();
+        if (phase === 'idle') {
+          playTapSound();
+          startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
+          setPhase('work');
+          setPaused(false);
+          if (autoPlay && !isMusicPlaying) {
+            setMusicPlaying(true);
+          }
+        } else if (paused) {
+          playTapSound();
+          resumeTiming();
+          setPaused(false);
+          if (autoPlay) {
+            setMusicPlaying(true);
+          }
+        } else {
+          playTapSound();
+          pauseTiming();
+          setPaused(true);
+          setMusicPlaying(false);
+        }
+      }
+
+      if (e.key.toLowerCase() === 'e' && !hasBlockingModal && phase === 'work') {
+        e.preventDefault();
+        handleEndSession();
+      }
+
+      if (e.key === 'Escape') {
+        if (deepWork) setDeepWork(false);
+        if (musicOpen) handleCloseMusicPanel();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [
+    showBreakModal,
+    pendingMode,
+    phase,
+    paused,
+    deepWork,
+    musicOpen,
+    mode,
+    preset,
+    autoPlay,
+    isMusicPlaying,
+    setMusicPlaying,
+    handleCloseMusicPanel,
+    handleEndSession,
+    playTapSound,
+    pauseTiming,
+    resumeTiming,
+    startPhaseTiming,
+  ]);
 
   const handleSetActiveSound = useCallback((id: string | null) => {
     if (id === null) {
@@ -1428,7 +1454,7 @@ export function TimerScreen() {
 
         {/* Mode Toggle */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           style={{
@@ -1468,7 +1494,7 @@ export function TimerScreen() {
         {/* Session status badge */}
         <motion.div
           key={sessionLabel}
-          initial={{ opacity: 0, y: 4 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           style={{
             display: 'flex',
@@ -1525,7 +1551,7 @@ export function TimerScreen() {
               gap: 4,
             }}
           >
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={`${Math.floor(displayTime / 60)}`}
                 initial={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -1662,10 +1688,10 @@ export function TimerScreen() {
         </div>
 
         {/* Preset selector (fixed idle) */}
-        <AnimatePresence>
+        <AnimatePresence initial={false}>
           {mode === 'fixed' && phase === 'idle' && (
             <motion.div
-              initial={{ opacity: 0, y: 8 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               style={{ display: 'flex', gap: 8 }}
@@ -1819,7 +1845,15 @@ export function TimerScreen() {
           }}
         >
           <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', fontWeight: 500 }}>
-            {phase === 'idle' ? 'Press Space to start' : paused ? 'Press Space to resume' : 'Press Space to pause'}
+            {phase === 'idle'
+              ? 'Press Space to start'
+              : phase === 'work'
+                ? paused
+                  ? 'Press Space to resume · E to end'
+                  : 'Press Space to pause · E to end'
+                : paused
+                  ? 'Press Space to resume'
+                  : 'Press Space to pause'}
           </p>
         </div>
       </div>
