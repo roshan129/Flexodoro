@@ -934,6 +934,7 @@ export function TimerScreen() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
+  const defaultTitleRef = useRef<string>("Flexodoro");
   const intervalRef = useRef<number | null>(null);
   const [timing, setTiming] = useState<TimerTiming>({
     startedAtMs: null,
@@ -1031,6 +1032,8 @@ export function TimerScreen() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    defaultTitleRef.current = document.title;
+
     tapSoundRef.current = new Audio('/sounds/tap_notification.mp3');
     tapSoundRef.current.preload = 'auto';
 
@@ -1120,9 +1123,10 @@ export function TimerScreen() {
     if (phase === 'work' && mode === 'fixed') {
       const nextBreakDuration = BREAK_DURATIONS[preset];
       setBreakDur(nextBreakDuration);
-      startPhaseTiming(nextBreakDuration, nextNow);
-      setPhase('break');
-      setPaused(false);
+      pauseTiming(nextNow);
+      setPaused(true);
+      setShowBreakModal(true);
+      setMusicPlaying(false);
       setCompletedSessions((c) => c + 1);
       playBellSound();
     } else if (phase === 'break') {
@@ -1135,7 +1139,7 @@ export function TimerScreen() {
     window.setTimeout(() => {
       isTransitioningRef.current = false;
     }, 0);
-  }, [breakDur, getElapsedSeconds, mode, paused, phase, playBellSound, preset, resetTiming, startPhaseTiming]);
+  }, [breakDur, getElapsedSeconds, mode, pauseTiming, paused, phase, playBellSound, preset, resetTiming, setMusicPlaying]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1214,6 +1218,7 @@ export function TimerScreen() {
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
+    setCompletedSessions((c) => c + 1);
   }, [getWorkedSeconds, handleStop, pauseTiming, setMusicPlaying, playTapSound]);
 
   const handleStartBreak = useCallback(() => {
@@ -1222,7 +1227,6 @@ export function TimerScreen() {
     startPhaseTiming(breakDur);
     setPaused(false);
     setMusicPlaying(false);
-    setCompletedSessions((c) => c + 1);
   }, [breakDur, setMusicPlaying, startPhaseTiming]);
 
   const handleSkipBreak = useCallback(() => {
@@ -1398,6 +1402,33 @@ export function TimerScreen() {
     if (phase === 'idle' && mode === 'flexible') return 0;
     return time;
   })();
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const phaseLabel = phase === "break" ? "Break" : "Focus";
+    const timerValue = formatTime(displayTime);
+
+    if (phase === "idle") {
+      document.title = defaultTitleRef.current;
+      return;
+    }
+
+    if (paused) {
+      document.title = `${timerValue} · ${phaseLabel} (Paused)`;
+      return;
+    }
+
+    document.title = `${timerValue} · ${phaseLabel}`;
+
+    return () => {
+      if (phase === "idle") {
+        document.title = defaultTitleRef.current;
+      }
+    };
+  }, [displayTime, paused, phase]);
 
   return (
     <>
