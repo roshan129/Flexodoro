@@ -913,14 +913,15 @@ function DeepWorkOverlay({
 export function TimerScreen() {
   useFocusAudioEngine();
 
+  const mode = useAppStore((state) => state.mode);
   const selectedTrackId = useAppStore((state) => state.selectedTrackId);
   const isMusicPlaying = useAppStore((state) => state.isMusicPlaying);
   const musicVolume = useAppStore((state) => state.musicVolume);
+  const setStoreMode = useAppStore((state) => state.setMode);
   const setSelectedTrackId = useAppStore((state) => state.setSelectedTrackId);
   const setMusicPlaying = useAppStore((state) => state.setMusicPlaying);
   const setMusicVolume = useAppStore((state) => state.setMusicVolume);
 
-  const [mode, setMode] = useState<Mode>('flexible');
   const [preset, setPreset] = useState<Preset>('25/5');
   const [phase, setPhase] = useState<Phase>('idle');
   const [paused, setPaused] = useState(false);
@@ -1008,20 +1009,24 @@ export function TimerScreen() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const savedMode = window.localStorage.getItem(MODE_STORAGE_KEY);
-    if (savedMode === 'fixed' || savedMode === 'flexible') {
+
+    if (savedMode !== 'fixed' && savedMode !== 'flexible') {
+      return;
+    }
+
+    if (mode === 'fixed' && savedMode !== mode) {
       const frame = window.requestAnimationFrame(() => {
-        setMode(savedMode);
+        setStoreMode(savedMode);
         resetTiming();
       });
+      window.localStorage.removeItem(MODE_STORAGE_KEY);
       return () => window.cancelAnimationFrame(frame);
     }
-  }, [resetTiming]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(MODE_STORAGE_KEY, mode);
-  }, [mode]);
+    window.localStorage.removeItem(MODE_STORAGE_KEY);
+  }, [mode, resetTiming, setStoreMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1310,7 +1315,7 @@ export function TimerScreen() {
     setPendingMode(null);
     setPaused(false);
     setPhase('idle');
-    setMode(nextMode);
+    setStoreMode(nextMode);
     resetTiming();
     setBreakDur(0);
     setDeepWork(false);
@@ -1321,7 +1326,7 @@ export function TimerScreen() {
         ? `Session ended at ${formatTime(worked)}.`
         : 'Session ended.',
     );
-  }, [getWorkedSeconds, resetTiming, setMusicPlaying]);
+  }, [getWorkedSeconds, resetTiming, setMusicPlaying, setStoreMode]);
 
   const handleModeSwitch = (m: Mode) => {
     if (mode === m) return;
@@ -1338,7 +1343,7 @@ export function TimerScreen() {
     setShowBreakModal(false);
     setPaused(false);
     setPhase('idle');
-    setMode(m);
+    setStoreMode(m);
     resetTiming();
   };
 
