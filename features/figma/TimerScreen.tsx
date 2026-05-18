@@ -913,14 +913,15 @@ function DeepWorkOverlay({
 export function TimerScreen() {
   useFocusAudioEngine();
 
+  const mode = useAppStore((state) => state.mode);
   const selectedTrackId = useAppStore((state) => state.selectedTrackId);
   const isMusicPlaying = useAppStore((state) => state.isMusicPlaying);
   const musicVolume = useAppStore((state) => state.musicVolume);
+  const setStoreMode = useAppStore((state) => state.setMode);
   const setSelectedTrackId = useAppStore((state) => state.setSelectedTrackId);
   const setMusicPlaying = useAppStore((state) => state.setMusicPlaying);
   const setMusicVolume = useAppStore((state) => state.setMusicVolume);
 
-  const [mode, setMode] = useState<Mode>('flexible');
   const [preset, setPreset] = useState<Preset>('25/5');
   const [phase, setPhase] = useState<Phase>('idle');
   const [paused, setPaused] = useState(false);
@@ -933,6 +934,7 @@ export function TimerScreen() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
+  const defaultTitleRef = useRef<string>("Flexodoro");
   const intervalRef = useRef<number | null>(null);
   const [timing, setTiming] = useState<TimerTiming>({
     startedAtMs: null,
@@ -1008,23 +1010,29 @@ export function TimerScreen() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
     const savedMode = window.localStorage.getItem(MODE_STORAGE_KEY);
-    if (savedMode === 'fixed' || savedMode === 'flexible') {
+
+    if (savedMode !== 'fixed' && savedMode !== 'flexible') {
+      return;
+    }
+
+    if (mode === 'fixed' && savedMode !== mode) {
       const frame = window.requestAnimationFrame(() => {
-        setMode(savedMode);
+        setStoreMode(savedMode);
         resetTiming();
       });
+      window.localStorage.removeItem(MODE_STORAGE_KEY);
       return () => window.cancelAnimationFrame(frame);
     }
-  }, [resetTiming]);
+
+    window.localStorage.removeItem(MODE_STORAGE_KEY);
+  }, [mode, resetTiming, setStoreMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(MODE_STORAGE_KEY, mode);
-  }, [mode]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+    defaultTitleRef.current = document.title;
 
     tapSoundRef.current = new Audio('/sounds/tap_notification.mp3');
     tapSoundRef.current.preload = 'auto';
@@ -1115,9 +1123,10 @@ export function TimerScreen() {
     if (phase === 'work' && mode === 'fixed') {
       const nextBreakDuration = BREAK_DURATIONS[preset];
       setBreakDur(nextBreakDuration);
-      startPhaseTiming(nextBreakDuration, nextNow);
-      setPhase('break');
-      setPaused(false);
+      pauseTiming(nextNow);
+      setPaused(true);
+      setShowBreakModal(true);
+      setMusicPlaying(false);
       setCompletedSessions((c) => c + 1);
       playBellSound();
     } else if (phase === 'break') {
@@ -1130,7 +1139,7 @@ export function TimerScreen() {
     window.setTimeout(() => {
       isTransitioningRef.current = false;
     }, 0);
-  }, [breakDur, getElapsedSeconds, mode, paused, phase, playBellSound, preset, resetTiming, startPhaseTiming]);
+  }, [breakDur, getElapsedSeconds, mode, pauseTiming, paused, phase, playBellSound, preset, resetTiming, setMusicPlaying]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1209,6 +1218,7 @@ export function TimerScreen() {
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
+    setCompletedSessions((c) => c + 1);
   }, [getWorkedSeconds, handleStop, pauseTiming, setMusicPlaying, playTapSound]);
 
   const handleStartBreak = useCallback(() => {
@@ -1217,7 +1227,6 @@ export function TimerScreen() {
     startPhaseTiming(breakDur);
     setPaused(false);
     setMusicPlaying(false);
-    setCompletedSessions((c) => c + 1);
   }, [breakDur, setMusicPlaying, startPhaseTiming]);
 
   const handleSkipBreak = useCallback(() => {
@@ -1310,7 +1319,7 @@ export function TimerScreen() {
     setPendingMode(null);
     setPaused(false);
     setPhase('idle');
-    setMode(nextMode);
+    setStoreMode(nextMode);
     resetTiming();
     setBreakDur(0);
     setDeepWork(false);
@@ -1321,7 +1330,7 @@ export function TimerScreen() {
         ? `Session ended at ${formatTime(worked)}.`
         : 'Session ended.',
     );
-  }, [getWorkedSeconds, resetTiming, setMusicPlaying]);
+  }, [getWorkedSeconds, resetTiming, setMusicPlaying, setStoreMode]);
 
   const handleModeSwitch = (m: Mode) => {
     if (mode === m) return;
@@ -1338,7 +1347,7 @@ export function TimerScreen() {
     setShowBreakModal(false);
     setPaused(false);
     setPhase('idle');
-    setMode(m);
+    setStoreMode(m);
     resetTiming();
   };
 
@@ -1393,6 +1402,33 @@ export function TimerScreen() {
     if (phase === 'idle' && mode === 'flexible') return 0;
     return time;
   })();
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const phaseLabel = phase === "break" ? "Break" : "Focus";
+    const timerValue = formatTime(displayTime);
+
+    if (phase === "idle") {
+      document.title = defaultTitleRef.current;
+      return;
+    }
+
+    if (paused) {
+      document.title = `${timerValue} · ${phaseLabel} (Paused)`;
+      return;
+    }
+
+    document.title = `${timerValue} · ${phaseLabel}`;
+
+    return () => {
+      if (phase === "idle") {
+        document.title = defaultTitleRef.current;
+      }
+    };
+  }, [displayTime, paused, phase]);
 
   return (
     <>
