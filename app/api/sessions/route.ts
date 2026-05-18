@@ -112,6 +112,16 @@ function validateSessionPayload(body: SessionPayloadInput): ValidationIssue[] {
   return issues;
 }
 
+function toSessionPayload(body: SessionPayloadInput): SessionPayload {
+  return {
+    mode: body.mode as SessionPayload["mode"],
+    type: body.type as SessionPayload["type"] | undefined,
+    durationSec: body.durationSec as number,
+    startedAt: body.startedAt as string,
+    endedAt: body.endedAt as string | undefined,
+  };
+}
+
 export async function POST(request: Request) {
   let rawBody: unknown;
 
@@ -158,7 +168,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = rawBody as SessionPayload;
+  const body = toSessionPayload(rawBody);
 
   try {
     const session = await prisma.session.create({
