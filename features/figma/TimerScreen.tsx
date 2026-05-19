@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusAudioEngine } from "@/features/music/hooks/use-focus-audio-engine";
+import { saveSession } from "@/lib/session";
 import { useAppStore } from "@/store/use-app-store";
 import type { MusicTrackId } from "@/store/use-app-store";
 import {
@@ -1098,6 +1099,23 @@ export function TimerScreen() {
     });
   }, [mode, phase, preset]);
 
+  const persistWorkSession = useCallback((workedSeconds: number, endedAtMs = Date.now()) => {
+    if (workedSeconds <= 0) {
+      return;
+    }
+
+    const startedAt = new Date(endedAtMs - workedSeconds * 1000);
+    const endedAt = new Date(endedAtMs);
+
+    void saveSession({
+      mode: mode === "fixed" ? "FIXED" : "FLEXIBLE",
+      type: "WORK",
+      durationSec: workedSeconds,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+    });
+  }, [mode]);
+
   const refreshTimer = useCallback(() => {
     const nextNow = Date.now();
     setNowMs(nextNow);
@@ -1121,6 +1139,7 @@ export function TimerScreen() {
     isTransitioningRef.current = true;
 
     if (phase === 'work' && mode === 'fixed') {
+      persistWorkSession(WORK_DURATIONS[preset], nextNow);
       const nextBreakDuration = BREAK_DURATIONS[preset];
       setBreakDur(nextBreakDuration);
       pauseTiming(nextNow);
@@ -1139,7 +1158,7 @@ export function TimerScreen() {
     window.setTimeout(() => {
       isTransitioningRef.current = false;
     }, 0);
-  }, [breakDur, getElapsedSeconds, mode, pauseTiming, paused, phase, playBellSound, preset, resetTiming, setMusicPlaying]);
+  }, [breakDur, getElapsedSeconds, mode, pauseTiming, paused, phase, playBellSound, persistWorkSession, preset, resetTiming, setMusicPlaying]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1213,13 +1232,14 @@ export function TimerScreen() {
     }
 
     const suggested = calcSuggestedBreak(worked);
+    persistWorkSession(worked);
     setBreakDur(suggested);
     pauseTiming();
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
     setCompletedSessions((c) => c + 1);
-  }, [getWorkedSeconds, handleStop, pauseTiming, setMusicPlaying, playTapSound]);
+  }, [getWorkedSeconds, handleStop, pauseTiming, persistWorkSession, setMusicPlaying, playTapSound]);
 
   const handleStartBreak = useCallback(() => {
     setShowBreakModal(false);
