@@ -1444,9 +1444,7 @@ export function TimerScreen() {
     document.title = `${timerValue} · ${phaseLabel}`;
 
     return () => {
-      if (phase === "idle") {
-        document.title = defaultTitleRef.current;
-      }
+      document.title = defaultTitleRef.current;
     };
   }, [displayTime, paused, phase]);
 
