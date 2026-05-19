@@ -4,7 +4,6 @@
 import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFocusAudioEngine } from "@/features/music/hooks/use-focus-audio-engine";
-import { saveSession } from "@/lib/session";
 import { useAppStore } from "@/store/use-app-store";
 import type { MusicTrackId } from "@/store/use-app-store";
 import {
@@ -914,15 +913,14 @@ function DeepWorkOverlay({
 export function TimerScreen() {
   useFocusAudioEngine();
 
-  const mode = useAppStore((state) => state.mode);
   const selectedTrackId = useAppStore((state) => state.selectedTrackId);
   const isMusicPlaying = useAppStore((state) => state.isMusicPlaying);
   const musicVolume = useAppStore((state) => state.musicVolume);
-  const setStoreMode = useAppStore((state) => state.setMode);
   const setSelectedTrackId = useAppStore((state) => state.setSelectedTrackId);
   const setMusicPlaying = useAppStore((state) => state.setMusicPlaying);
   const setMusicVolume = useAppStore((state) => state.setMusicVolume);
 
+  const [mode, setMode] = useState<Mode>('flexible');
   const [preset, setPreset] = useState<Preset>('25/5');
   const [phase, setPhase] = useState<Phase>('idle');
   const [paused, setPaused] = useState(false);
@@ -935,7 +933,6 @@ export function TimerScreen() {
   const [pendingMode, setPendingMode] = useState<Mode | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
-  const defaultTitleRef = useRef<string>("Flexodoro");
   const intervalRef = useRef<number | null>(null);
   const [timing, setTiming] = useState<TimerTiming>({
     startedAtMs: null,
@@ -1011,29 +1008,23 @@ export function TimerScreen() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const savedMode = window.localStorage.getItem(MODE_STORAGE_KEY);
-
-    if (savedMode !== 'fixed' && savedMode !== 'flexible') {
-      return;
-    }
-
-    if (mode === 'fixed' && savedMode !== mode) {
+    if (savedMode === 'fixed' || savedMode === 'flexible') {
       const frame = window.requestAnimationFrame(() => {
-        setStoreMode(savedMode);
+        setMode(savedMode);
         resetTiming();
       });
-      window.localStorage.removeItem(MODE_STORAGE_KEY);
       return () => window.cancelAnimationFrame(frame);
     }
-
-    window.localStorage.removeItem(MODE_STORAGE_KEY);
-  }, [mode, resetTiming, setStoreMode]);
+  }, [resetTiming]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    window.localStorage.setItem(MODE_STORAGE_KEY, mode);
+  }, [mode]);
 
-    defaultTitleRef.current = document.title;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
     tapSoundRef.current = new Audio('/sounds/tap_notification.mp3');
     tapSoundRef.current.preload = 'auto';
@@ -1099,22 +1090,41 @@ export function TimerScreen() {
     });
   }, [mode, phase, preset]);
 
-  const persistWorkSession = useCallback((workedSeconds: number, endedAtMs = Date.now()) => {
-    if (workedSeconds <= 0) {
-      return;
-    }
-
-    const startedAt = new Date(endedAtMs - workedSeconds * 1000);
-    const endedAt = new Date(endedAtMs);
-
-    void saveSession({
-      mode: mode === "fixed" ? "FIXED" : "FLEXIBLE",
-      type: "WORK",
-      durationSec: workedSeconds,
-      startedAt: startedAt.toISOString(),
-      endedAt: endedAt.toISOString(),
-    });
-  }, [mode]);
+  // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !showBreakModal && !pendingMode) {
+        e.preventDefault();
+        if (phase === 'idle') {
+          playTapSound();
+          startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
+          setPhase('work');
+          setPaused(false);
+          if (autoPlay && !isMusicPlaying) {
+            setMusicPlaying(true);
+          }
+        } else if (paused) {
+          playTapSound();
+          resumeTiming();
+          setPaused(false);
+          if (autoPlay) {
+            setMusicPlaying(true);
+          }
+        } else {
+          playTapSound();
+          pauseTiming();
+          setPaused(true);
+          setMusicPlaying(false);
+        }
+      }
+      if (e.key === 'Escape') {
+        if (deepWork) setDeepWork(false);
+        if (musicOpen) handleCloseMusicPanel();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [showBreakModal, pendingMode, phase, paused, deepWork, musicOpen, mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, handleCloseMusicPanel, playTapSound, pauseTiming, resumeTiming, startPhaseTiming]);
 
   const refreshTimer = useCallback(() => {
     const nextNow = Date.now();
@@ -1139,13 +1149,11 @@ export function TimerScreen() {
     isTransitioningRef.current = true;
 
     if (phase === 'work' && mode === 'fixed') {
-      persistWorkSession(WORK_DURATIONS[preset], nextNow);
       const nextBreakDuration = BREAK_DURATIONS[preset];
       setBreakDur(nextBreakDuration);
-      pauseTiming(nextNow);
-      setPaused(true);
-      setShowBreakModal(true);
-      setMusicPlaying(false);
+      startPhaseTiming(nextBreakDuration, nextNow);
+      setPhase('break');
+      setPaused(false);
       setCompletedSessions((c) => c + 1);
       playBellSound();
     } else if (phase === 'break') {
@@ -1158,7 +1166,7 @@ export function TimerScreen() {
     window.setTimeout(() => {
       isTransitioningRef.current = false;
     }, 0);
-  }, [breakDur, getElapsedSeconds, mode, pauseTiming, paused, phase, playBellSound, persistWorkSession, preset, resetTiming, setMusicPlaying]);
+  }, [breakDur, getElapsedSeconds, mode, paused, phase, playBellSound, preset, resetTiming, startPhaseTiming]);
 
   // ─── Timer tick ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1232,14 +1240,12 @@ export function TimerScreen() {
     }
 
     const suggested = calcSuggestedBreak(worked);
-    persistWorkSession(worked);
     setBreakDur(suggested);
     pauseTiming();
     setPaused(true);
     setShowBreakModal(true);
     setMusicPlaying(false);
-    setCompletedSessions((c) => c + 1);
-  }, [getWorkedSeconds, handleStop, pauseTiming, persistWorkSession, setMusicPlaying, playTapSound]);
+  }, [getWorkedSeconds, handleStop, pauseTiming, setMusicPlaying, playTapSound]);
 
   const handleStartBreak = useCallback(() => {
     setShowBreakModal(false);
@@ -1247,74 +1253,13 @@ export function TimerScreen() {
     startPhaseTiming(breakDur);
     setPaused(false);
     setMusicPlaying(false);
+    setCompletedSessions((c) => c + 1);
   }, [breakDur, setMusicPlaying, startPhaseTiming]);
 
   const handleSkipBreak = useCallback(() => {
     setShowBreakModal(false);
     handleStop();
   }, [handleStop]);
-
-  // ─── Keyboard shortcuts ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      const hasBlockingModal = showBreakModal || pendingMode;
-
-      if (e.code === 'Space' && !hasBlockingModal) {
-        e.preventDefault();
-        if (phase === 'idle') {
-          playTapSound();
-          startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
-          setPhase('work');
-          setPaused(false);
-          if (autoPlay && !isMusicPlaying) {
-            setMusicPlaying(true);
-          }
-        } else if (paused) {
-          playTapSound();
-          resumeTiming();
-          setPaused(false);
-          if (autoPlay) {
-            setMusicPlaying(true);
-          }
-        } else {
-          playTapSound();
-          pauseTiming();
-          setPaused(true);
-          setMusicPlaying(false);
-        }
-      }
-
-      if (e.key.toLowerCase() === 'e' && !hasBlockingModal && phase === 'work') {
-        e.preventDefault();
-        handleEndSession();
-      }
-
-      if (e.key === 'Escape') {
-        if (deepWork) setDeepWork(false);
-        if (musicOpen) handleCloseMusicPanel();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [
-    showBreakModal,
-    pendingMode,
-    phase,
-    paused,
-    deepWork,
-    musicOpen,
-    mode,
-    preset,
-    autoPlay,
-    isMusicPlaying,
-    setMusicPlaying,
-    handleCloseMusicPanel,
-    handleEndSession,
-    playTapSound,
-    pauseTiming,
-    resumeTiming,
-    startPhaseTiming,
-  ]);
 
   const handleSetActiveSound = useCallback((id: string | null) => {
     if (id === null) {
@@ -1339,7 +1284,7 @@ export function TimerScreen() {
     setPendingMode(null);
     setPaused(false);
     setPhase('idle');
-    setStoreMode(nextMode);
+    setMode(nextMode);
     resetTiming();
     setBreakDur(0);
     setDeepWork(false);
@@ -1350,7 +1295,7 @@ export function TimerScreen() {
         ? `Session ended at ${formatTime(worked)}.`
         : 'Session ended.',
     );
-  }, [getWorkedSeconds, resetTiming, setMusicPlaying, setStoreMode]);
+  }, [getWorkedSeconds, resetTiming, setMusicPlaying]);
 
   const handleModeSwitch = (m: Mode) => {
     if (mode === m) return;
@@ -1367,7 +1312,7 @@ export function TimerScreen() {
     setShowBreakModal(false);
     setPaused(false);
     setPhase('idle');
-    setStoreMode(m);
+    setMode(m);
     resetTiming();
   };
 
@@ -1422,31 +1367,6 @@ export function TimerScreen() {
     if (phase === 'idle' && mode === 'flexible') return 0;
     return time;
   })();
-
-  useEffect(() => {
-    if (typeof document === "undefined") {
-      return;
-    }
-
-    const phaseLabel = phase === "break" ? "Break" : "Focus";
-    const timerValue = formatTime(displayTime);
-
-    if (phase === "idle") {
-      document.title = defaultTitleRef.current;
-      return;
-    }
-
-    if (paused) {
-      document.title = `${timerValue} · ${phaseLabel} (Paused)`;
-      return;
-    }
-
-    document.title = `${timerValue} · ${phaseLabel}`;
-
-    return () => {
-      document.title = defaultTitleRef.current;
-    };
-  }, [displayTime, paused, phase]);
 
   return (
     <>
@@ -1508,7 +1428,7 @@ export function TimerScreen() {
 
         {/* Mode Toggle */}
         <motion.div
-          initial={false}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           style={{
@@ -1548,7 +1468,7 @@ export function TimerScreen() {
         {/* Session status badge */}
         <motion.div
           key={sessionLabel}
-          initial={false}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           style={{
             display: 'flex',
@@ -1605,7 +1525,7 @@ export function TimerScreen() {
               gap: 4,
             }}
           >
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="wait">
               <motion.span
                 key={`${Math.floor(displayTime / 60)}`}
                 initial={{ opacity: 0, y: 8, scale: 0.96 }}
@@ -1742,10 +1662,10 @@ export function TimerScreen() {
         </div>
 
         {/* Preset selector (fixed idle) */}
-        <AnimatePresence initial={false}>
+        <AnimatePresence>
           {mode === 'fixed' && phase === 'idle' && (
             <motion.div
-              initial={false}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               style={{ display: 'flex', gap: 8 }}
@@ -1899,15 +1819,7 @@ export function TimerScreen() {
           }}
         >
           <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', fontWeight: 500 }}>
-            {phase === 'idle'
-              ? 'Press Space to start'
-              : phase === 'work'
-                ? paused
-                  ? 'Press Space to resume · E to end'
-                  : 'Press Space to pause · E to end'
-                : paused
-                  ? 'Press Space to resume'
-                  : 'Press Space to pause'}
+            {phase === 'idle' ? 'Press Space to start' : paused ? 'Press Space to resume' : 'Press Space to pause'}
           </p>
         </div>
       </div>
