@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -34,40 +34,44 @@ const MUTED = 'var(--muted)';
 const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
-const weeklyData = [
-  { day: 'Mon', focus: 95, sessions: 3 },
-  { day: 'Tue', focus: 145, sessions: 5 },
-  { day: 'Wed', focus: 200, sessions: 7 },
-  { day: 'Thu', focus: 60, sessions: 2 },
-  { day: 'Fri', focus: 175, sessions: 6 },
-  { day: 'Sat', focus: 120, sessions: 4 },
-  { day: 'Sun', focus: 42, sessions: 1 },
-];
+type WeeklyTrendPoint = {
+  date: string;
+  totalDurationSec: number;
+  sessionsCount: number;
+};
 
-const monthlyData = Array.from({ length: 28 }, (_, i) => {
-  const baseline = 95 + 35 * Math.sin(i / 2.7);
-  const trend = (i % 6) * 4;
-  const burst = [0, 18, -6, 22, -10, 8, 14][i % 7];
-  return {
-    day: i + 1,
-    focus: Math.max(25, Math.round(baseline + trend + burst)),
-  };
-});
+type StatsSummary = {
+  totalTimeSec: number;
+  avgSessionSec: number;
+  sessionsCount: number;
+  dailyFocusTimeSec: number;
+  weeklyTrend: WeeklyTrendPoint[];
+};
 
-const recentSessions = [
-  { id: 1, label: 'Deep Work', duration: 52, type: 'flexible', time: '2h ago', color: ACCENT },
-  { id: 2, label: 'Fixed Pomodoro', duration: 25, type: 'fixed', time: '4h ago', color: '#A78BFA' },
-  { id: 3, label: 'Deep Work', duration: 38, type: 'flexible', time: 'Yesterday', color: ACCENT },
-  { id: 4, label: 'Fixed Pomodoro', duration: 40, type: 'fixed', time: 'Yesterday', color: '#A78BFA' },
-  { id: 5, label: 'Flow Session', duration: 67, type: 'flexible', time: '2 days ago', color: ACCENT },
-];
+type InsightsSummary = {
+  bestFocusTime: string;
+  avgSessionLengthSec: number;
+  personalBestDay: {
+    date: string;
+    totalDurationSec: number;
+  } | null;
+  hourlyFocusSec: Array<{
+    hour: number;
+    totalDurationSec: number;
+  }>;
+};
 
-const insights = [
-  { icon: <Sun size={14} />, text: 'You focus best between 9–11am', color: '#F59E0B' },
-  { icon: <Zap size={14} />, text: 'Your average session is 42 minutes', color: ACCENT },
-  { icon: <TrendingUp size={14} />, text: 'Focus time up 23% this week', color: '#10B981' },
-  { icon: <Moon size={14} />, text: 'You rarely work after 8pm — healthy!', color: '#8B5CF6' },
-];
+function parseLocalDateKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function StatCard({
@@ -153,6 +157,9 @@ function StatCard({
 type ChartTooltipItem = {
   dataKey: string;
   value: number;
+  payload?: {
+    fullLabel?: string;
+  };
 };
 
 type ChartTooltipProps = {
@@ -164,6 +171,8 @@ type ChartTooltipProps = {
 // Custom tooltip for charts
 function CustomTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
+  const primary = payload[0];
+  const header = primary?.payload?.fullLabel ?? label;
   return (
     <div
       style={{
@@ -174,11 +183,11 @@ function CustomTooltip({ active, payload, label }: ChartTooltipProps) {
         boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
       }}
     >
-      <p style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>{label}</p>
+      <p style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>{header}</p>
       {payload.map((p) => (
         <p key={p.dataKey} style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>
-          {p.value}
-          <span style={{ fontWeight: 400, color: MUTED, fontSize: 11 }}> min</span>
+          {Math.round(p.value)}
+          <span style={{ fontWeight: 400, color: MUTED, fontSize: 11 }}> min focused</span>
         </p>
       ))}
     </div>
@@ -220,19 +229,189 @@ function GoalRing({ progress, size = 80 }: { progress: number; size?: number }) 
   );
 }
 
+function formatMinutes(totalMinutes: number): string {
+  if (totalMinutes <= 0) {
+    return '0m';
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes}m`;
+  }
+  if (minutes === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${minutes}m`;
+}
+
+function formatHoursDecimal(totalMinutes: number): string {
+  return `${(Math.round((totalMinutes / 60) * 10) / 10).toFixed(1)}h`;
+}
+
+function formatHourLabel(hour: number): string {
+  const period = hour >= 12 ? 'pm' : 'am';
+  const normalized = hour % 12 === 0 ? 12 : hour % 12;
+  return `${normalized}${period}`;
+}
+
 export function StatsPage() {
   const [view, setView] = useState<'week' | 'month'>('week');
+  const [stats, setStats] = useState<StatsSummary | null>(null);
+  const [insightsData, setInsightsData] = useState<InsightsSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadStats() {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const [statsRes, insightsRes] = await Promise.all([
+          fetch('/api/stats', { cache: 'no-store' }),
+          fetch('/api/insights', { cache: 'no-store' }),
+        ]);
+
+        if (!statsRes.ok || !insightsRes.ok) {
+          throw new Error('Failed to fetch stats.');
+        }
+
+        const statsJson = await statsRes.json();
+        const insightsJson = await insightsRes.json();
+
+        if (!cancelled) {
+          setStats(statsJson.data ?? null);
+          setInsightsData(insightsJson.data ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setErrorMessage('Unable to load stats right now. Please try again.');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadStats();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const weeklyData = useMemo(() => {
+    if (!stats?.weeklyTrend) {
+      return [];
+    }
+
+    return stats.weeklyTrend.map((point) => {
+      const date = parseLocalDateKey(point.date);
+      return {
+        day: date.toLocaleDateString(undefined, { weekday: 'short' }),
+        date: point.date,
+        focus: Math.round(point.totalDurationSec / 60),
+        sessions: point.sessionsCount,
+      };
+    });
+  }, [stats]);
+
+  const monthlyData = useMemo(() => {
+    return weeklyData.map((d) => {
+      const date = parseLocalDateKey(d.date);
+      return {
+        day: date.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }),
+        fullLabel: date.toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        }),
+        focus: d.focus,
+      };
+    });
+  }, [weeklyData]);
 
   const totalWeekFocus = weeklyData.reduce((a, d) => a + d.focus, 0);
   const totalWeekSessions = weeklyData.reduce((a, d) => a + d.sessions, 0);
-  const todayFocus = weeklyData[4].focus; // Friday = today
+  const todayFocus = Math.round((stats?.dailyFocusTimeSec ?? 0) / 60);
   const dailyGoal = 120;
-  const goalProgress = todayFocus / dailyGoal;
-  const streak = 12;
-  const avgSession = Math.round(totalWeekFocus / totalWeekSessions);
-  const deepWorkSessions = 8;
+  const goalProgress = dailyGoal > 0 ? Math.min(1, todayFocus / dailyGoal) : 0;
+  const streak = weeklyData.reduce((count, day) => (day.focus > 0 ? count + 1 : 0), 0);
+  const avgSession = Math.round((stats?.avgSessionSec ?? 0) / 60);
+  const deepWorkSessions = totalWeekSessions;
 
-  const chartData = view === 'week' ? weeklyData : monthlyData.map((d) => ({ day: `${d.day}`, focus: d.focus }));
+  const chartData =
+    view === 'week'
+      ? weeklyData.map((d) => ({
+          day: d.day,
+          focus: d.focus,
+          fullLabel: parseLocalDateKey(d.date).toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          }),
+        }))
+      : monthlyData.map((d) => ({ day: `${d.day}`, focus: d.focus, fullLabel: d.fullLabel }));
+  const todayDateKey = toLocalDateKey(new Date());
+  const recentSessions = weeklyData
+    .filter((d) => d.sessions > 0)
+    .slice(-5)
+    .reverse()
+    .map((d, idx) => ({
+      id: idx + 1,
+      label: 'Focus Sessions',
+      duration: d.focus,
+      type: `${d.sessions} sessions`,
+      time: parseLocalDateKey(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      color: idx % 2 === 0 ? ACCENT : '#A78BFA',
+    }));
+  const focusInsights = [
+    {
+      icon: <Sun size={14} />,
+      text: `You focus best around ${insightsData?.bestFocusTime ?? 'N/A'}`,
+      color: '#F59E0B',
+    },
+    {
+      icon: <Zap size={14} />,
+      text: `Your average session is ${formatMinutes(Math.round((insightsData?.avgSessionLengthSec ?? 0) / 60))}`,
+      color: ACCENT,
+    },
+    {
+      icon: <TrendingUp size={14} />,
+      text: `${stats?.sessionsCount ?? 0} total work sessions recorded`,
+      color: '#10B981',
+    },
+    {
+      icon: <Moon size={14} />,
+      text: `${formatHoursDecimal(Math.round((stats?.totalTimeSec ?? 0) / 60))} total focused time`,
+      color: '#8B5CF6',
+    },
+  ];
+  const hasAnyData = (stats?.sessionsCount ?? 0) > 0;
+  const personalBest = insightsData?.personalBestDay ?? null;
+  const personalBestDurationMinutes = Math.round((personalBest?.totalDurationSec ?? 0) / 60);
+  const personalBestDateLabel = personalBest
+    ? parseLocalDateKey(personalBest.date).toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      })
+    : 'No sessions yet';
+
+  const daytimeHours = Array.from({ length: 14 }, (_, i) => i + 6);
+  const hourlyFocusMap = new Map((insightsData?.hourlyFocusSec ?? []).map((item) => [item.hour, item.totalDurationSec]));
+  const peakHourBars = daytimeHours.map((hour) => ({
+    hour,
+    label: formatHourLabel(hour),
+    totalDurationSec: hourlyFocusMap.get(hour) ?? 0,
+  }));
+  const peakHourMax = Math.max(...peakHourBars.map((bar) => bar.totalDurationSec), 0);
 
   return (
     <div
@@ -262,8 +441,35 @@ export function StatsPage() {
           >
             Focus Stats
           </h1>
-          <p style={{ fontSize: 14, color: MUTED }}>Monday, April 13, 2026</p>
+          <p style={{ fontSize: 14, color: MUTED }}>
+            {isHydrated
+              ? new Date().toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : ' '}
+          </p>
         </motion.div>
+
+        {isLoading ? (
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, color: MUTED }}>
+            Loading stats...
+          </div>
+        ) : null}
+
+        {errorMessage ? (
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, color: '#F97316', marginTop: isLoading ? 12 : 0 }}>
+            {errorMessage}
+          </div>
+        ) : null}
+
+        {!isLoading && !errorMessage && !hasAnyData ? (
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24, color: MUTED }}>
+            No sessions yet. Start a focus session to populate your stats.
+          </div>
+        ) : null}
 
         {/* Stat cards */}
         <div
@@ -278,7 +484,7 @@ export function StatsPage() {
             icon={<Clock size={16} />}
             label="Today's Focus"
             value={`${todayFocus}m`}
-            sub={`${Math.round((todayFocus / 60) * 10) / 10}h out of ${dailyGoal / 60}h goal`}
+            sub={`${formatHoursDecimal(todayFocus)} out of ${formatHoursDecimal(dailyGoal)} goal`}
             delay={0}
           />
           <StatCard
@@ -292,7 +498,7 @@ export function StatsPage() {
           <StatCard
             icon={<TrendingUp size={16} />}
             label="This Week"
-            value={`${Math.round(totalWeekFocus / 60 * 10) / 10}h`}
+            value={formatHoursDecimal(totalWeekFocus)}
             sub={`${totalWeekSessions} sessions`}
             accent="#10B981"
             delay={0.1}
@@ -300,7 +506,7 @@ export function StatsPage() {
           <StatCard
             icon={<Target size={16} />}
             label="Avg Session"
-            value={`${avgSession}m`}
+            value={formatMinutes(avgSession)}
             sub="optimal for flow"
             accent="#EC4899"
             delay={0.15}
@@ -347,7 +553,9 @@ export function StatsPage() {
             >
               <div>
                 <p style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>Focus Time</p>
-                <p style={{ fontSize: 12, color: MUTED }}>Minutes per day</p>
+                <p style={{ fontSize: 12, color: MUTED }}>
+                  {view === 'week' ? 'Last 7 days (weekday view)' : 'Last 7 days (date view)'}
+                </p>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['week', 'month'] as const).map((v) => (
@@ -385,7 +593,12 @@ export function StatsPage() {
                   tickLine={false}
                   tick={{ fontSize: 11, fill: MUTED }}
                 />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: MUTED }} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: MUTED }}
+                  tickFormatter={(value) => `${Math.round(value)}m`}
+                />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
                   type="monotone"
@@ -462,7 +675,7 @@ export function StatsPage() {
               </p>
               <p style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>
                 {todayFocus >= dailyGoal
-                  ? '🎉 Goal reached!'
+                  ? 'Goal reached'
                   : `${dailyGoal - todayFocus} min to go`}
               </p>
             </div>
@@ -473,7 +686,7 @@ export function StatsPage() {
               <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 40 }}>
                 {weeklyData.map((d, i) => {
                   const h = (d.focus / 210) * 40;
-                  const isToday = i === 4;
+                  const isToday = d.date === todayDateKey;
                   return (
                     <motion.div
                       key={d.day}
@@ -493,15 +706,15 @@ export function StatsPage() {
                 })}
               </div>
               <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                {weeklyData.map((d, i) => (
+                {weeklyData.map((d) => (
                   <p
                     key={d.day}
                     style={{
                       flex: 1,
                       textAlign: 'center',
                       fontSize: 9,
-                      color: i === 4 ? '#A78BFA' : MUTED,
-                      fontWeight: i === 4 ? 700 : 400,
+                      color: d.date === todayDateKey ? '#A78BFA' : MUTED,
+                      fontWeight: d.date === todayDateKey ? 700 : 400,
                     }}
                   >
                     {d.day[0]}
@@ -582,7 +795,7 @@ export function StatsPage() {
                     >
                       {s.duration}m
                     </p>
-                    <p style={{ fontSize: 10, color: MUTED, textTransform: 'capitalize' }}>
+                    <p style={{ fontSize: 10, color: MUTED }}>
                       {s.type}
                     </p>
                   </div>
@@ -608,7 +821,7 @@ export function StatsPage() {
                 Focus Insights
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {insights.map((insight, i) => (
+                {focusInsights.map((insight, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: 10 }}
@@ -675,9 +888,9 @@ export function StatsPage() {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  3h 42m
+                  {formatMinutes(personalBestDurationMinutes)}
                 </p>
-                <p style={{ fontSize: 12, color: MUTED }}>Wednesday, March 18</p>
+                <p style={{ fontSize: 12, color: MUTED }}>{personalBestDateLabel}</p>
               </div>
             </motion.div>
 
@@ -695,41 +908,30 @@ export function StatsPage() {
             >
               <p style={{ fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 14 }}>Peak Hours</p>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 48 }}>
-                {[
-                  { h: '6am', v: 0.1 },
-                  { h: '7am', v: 0.2 },
-                  { h: '8am', v: 0.45 },
-                  { h: '9am', v: 0.9 },
-                  { h: '10am', v: 1 },
-                  { h: '11am', v: 0.85 },
-                  { h: '12pm', v: 0.5 },
-                  { h: '1pm', v: 0.3 },
-                  { h: '2pm', v: 0.65 },
-                  { h: '3pm', v: 0.75 },
-                  { h: '4pm', v: 0.7 },
-                  { h: '5pm', v: 0.4 },
-                  { h: '6pm', v: 0.2 },
-                  { h: '7pm', v: 0.15 },
-                ].map(({ h, v }) => (
+                {peakHourBars.map(({ hour, label, totalDurationSec }) => {
+                  const normalized =
+                    peakHourMax > 0 ? totalDurationSec / peakHourMax : 0;
+                  return (
                   <motion.div
-                    key={h}
-                    title={h}
+                    key={hour}
+                    title={`${label}: ${formatMinutes(Math.round(totalDurationSec / 60))}`}
                     initial={{ height: 0 }}
-                    animate={{ height: v * 48 }}
+                    animate={{ height: normalized * 48 }}
                     transition={{ duration: 0.6, delay: 0.5 }}
                     style={{
                       flex: 1,
                       borderRadius: 3,
                       background:
-                        v > 0.8
+                        normalized > 0.8
                           ? ACCENT
-                          : v > 0.5
+                          : normalized > 0.5
                           ? 'rgba(124,92,252,0.45)'
                           : 'rgba(124,92,252,0.18)',
                       cursor: 'default',
                     }}
                   />
-                ))}
+                );
+                })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
                 {[

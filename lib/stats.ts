@@ -20,10 +20,21 @@ export interface StatsSummary {
 export interface InsightsSummary {
   bestFocusTime: string;
   avgSessionLengthSec: number;
+  personalBestDay: {
+    date: string;
+    totalDurationSec: number;
+  } | null;
+  hourlyFocusSec: Array<{
+    hour: number;
+    totalDurationSec: number;
+  }>;
 }
 
 function formatDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function roundToInt(value: number): number {
@@ -46,7 +57,7 @@ export function buildStatsSummary(sessions: SessionStatRow[]): StatsSummary {
 
   for (let i = 6; i >= 0; i -= 1) {
     const day = new Date(now);
-    day.setUTCDate(now.getUTCDate() - i);
+    day.setDate(now.getDate() - i);
     dayBuckets.set(formatDateKey(day), { totalDurationSec: 0, sessionsCount: 0 });
   }
 
@@ -79,24 +90,33 @@ export function buildStatsSummary(sessions: SessionStatRow[]): StatsSummary {
 }
 
 export function buildInsightsSummary(sessions: SessionStatRow[]): InsightsSummary {
+  const hourBuckets = new Map<number, number>();
+  for (let hour = 0; hour < 24; hour += 1) {
+    hourBuckets.set(hour, 0);
+  }
+
   if (sessions.length === 0) {
     return {
       bestFocusTime: "Not enough data yet",
       avgSessionLengthSec: 0,
+      personalBestDay: null,
+      hourlyFocusSec: Array.from(hourBuckets.entries()).map(([hour, totalDurationSec]) => ({
+        hour,
+        totalDurationSec,
+      })),
     };
   }
 
-  const hourBuckets = new Map<number, number>();
-
-  for (let hour = 0; hour < 24; hour += 1) {
-    hourBuckets.set(hour, 0);
-  }
+  const dayBuckets = new Map<string, number>();
 
   let totalDuration = 0;
   for (const session of sessions) {
     totalDuration += session.durationSec;
     const hour = session.startedAt.getHours();
     hourBuckets.set(hour, (hourBuckets.get(hour) || 0) + session.durationSec);
+
+    const dayKey = formatDateKey(session.startedAt);
+    dayBuckets.set(dayKey, (dayBuckets.get(dayKey) || 0) + session.durationSec);
   }
 
   let bestHour = 0;
@@ -115,8 +135,28 @@ export function buildInsightsSummary(sessions: SessionStatRow[]): InsightsSummar
     return `${normalized}:00 ${period}`;
   };
 
+  let personalBestDate: string | null = null;
+  let personalBestDurationSec = -1;
+  for (const [date, durationSec] of dayBuckets.entries()) {
+    if (durationSec > personalBestDurationSec) {
+      personalBestDate = date;
+      personalBestDurationSec = durationSec;
+    }
+  }
+
   return {
     bestFocusTime: toHourLabel(bestHour),
     avgSessionLengthSec: roundToInt(totalDuration / sessions.length),
+    personalBestDay:
+      personalBestDate === null
+        ? null
+        : {
+            date: personalBestDate,
+            totalDurationSec: personalBestDurationSec,
+          },
+    hourlyFocusSec: Array.from(hourBuckets.entries()).map(([hour, totalDurationSec]) => ({
+      hour,
+      totalDurationSec,
+    })),
   };
 }
