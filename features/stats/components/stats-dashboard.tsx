@@ -20,6 +20,8 @@ const EMPTY_STATS: StatsSummary = {
 const EMPTY_INSIGHTS: InsightsSummary = {
   bestFocusTime: "Not enough data yet",
   avgSessionLengthSec: 0,
+  personalBestDay: null,
+  hourlyFocusSec: [],
 };
 
 export function StatsDashboard() {
