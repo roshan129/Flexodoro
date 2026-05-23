@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 interface SessionPayloadInput {
   [key: string]: unknown;
@@ -183,7 +184,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, session }, { status: 201 });
   } catch (error) {
-    console.error("Failed to save session", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error("Failed to save session (Prisma known error)", {
+        code: error.code,
+        meta: error.meta,
+      });
+    } else {
+      console.error("Failed to save session", error);
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to save session" },
       { status: 500 },
