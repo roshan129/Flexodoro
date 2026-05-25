@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -83,6 +84,12 @@ export default function RootLayout({
       <body className="min-h-full bg-background text-foreground font-sans">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeProvider>{children}</ThemeProvider>
+        <Script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "1f12117e72744dd78530ab2d46782380"}'
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
