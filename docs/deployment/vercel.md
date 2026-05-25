@@ -11,7 +11,13 @@
 1. Push repository to GitHub/GitLab/Bitbucket.
 2. Import project in Vercel.
 3. Add `DATABASE_URL` in Project Settings -> Environment Variables.
-4. Deploy.
+4. Set Vercel Build Command to `npm run build:vercel` so migrations run before `next build`.
+5. Deploy.
+
+## Prisma Migration Requirement
+- Ensure `prisma/migrations` is committed to the repository.
+- For existing projects that deployed before migrations were added, trigger a redeploy so Vercel can run `prisma migrate deploy`.
+- If `DATABASE_URL` points to a brand-new database, deployment will create the `Session` table from migrations automatically.
 
 ## Post-Deploy Checks
 1. Visit `/api/health` and confirm `status: ok`.
