@@ -29,6 +29,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 201 for a valid payload", async () => {
     mockedCreate.mockResolvedValueOnce({
       id: "session_1",
+      deviceId: "device-123",
       mode: "FIXED",
       type: "WORK",
       durationSec: 1500,
@@ -39,6 +40,7 @@ describe("POST /api/sessions validation", () => {
 
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "FIXED",
         type: "WORK",
         durationSec: 1500,
@@ -54,6 +56,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 422 for invalid enum (mode)", async () => {
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "POMODORO",
         durationSec: 1500,
         startedAt: "2026-05-16T10:00:00.000Z",
@@ -74,6 +77,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 422 for invalid dates", async () => {
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "FLEXIBLE",
         durationSec: 1200,
         startedAt: "not-a-date",
@@ -95,6 +99,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 422 for unknown fields", async () => {
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "FLEXIBLE",
         durationSec: 1200,
         startedAt: "2026-05-16T10:00:00.000Z",
@@ -115,6 +120,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 422 for negative duration", async () => {
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "FIXED",
         durationSec: -5,
         startedAt: "2026-05-16T10:00:00.000Z",
@@ -134,6 +140,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 422 for float duration", async () => {
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "FIXED",
         durationSec: 12.5,
         startedAt: "2026-05-16T10:00:00.000Z",
@@ -153,6 +160,7 @@ describe("POST /api/sessions validation", () => {
   it("returns 422 when endedAt is earlier than startedAt", async () => {
     const response = await POST(
       makeRequest({
+        deviceId: "device-123",
         mode: "FLEXIBLE",
         durationSec: 1200,
         startedAt: "2026-05-16T10:00:00.000Z",
@@ -165,6 +173,25 @@ describe("POST /api/sessions validation", () => {
     expect(json.error.issues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ field: "endedAt", code: "invalid_range" }),
+      ]),
+    );
+    expect(mockedCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns 422 for missing deviceId", async () => {
+    const response = await POST(
+      makeRequest({
+        mode: "FIXED",
+        durationSec: 1500,
+        startedAt: "2026-05-16T10:00:00.000Z",
+      }),
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(json.error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "deviceId", code: "invalid_string" }),
       ]),
     );
     expect(mockedCreate).not.toHaveBeenCalled();

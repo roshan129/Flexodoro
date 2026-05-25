@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { motion } from 'framer-motion';
+import { getOrCreateDeviceId } from '@/lib/device-id';
 import {
   Flame,
   Clock,
@@ -273,9 +274,10 @@ export function StatsPage() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
+        const deviceId = getOrCreateDeviceId();
         const [statsRes, insightsRes] = await Promise.all([
-          fetch('/api/stats', { cache: 'no-store' }),
-          fetch('/api/insights', { cache: 'no-store' }),
+          fetch('/api/stats', { cache: 'no-store', headers: { 'x-device-id': deviceId } }),
+          fetch('/api/insights', { cache: 'no-store', headers: { 'x-device-id': deviceId } }),
         ]);
 
         if (!statsRes.ok || !insightsRes.ok) {

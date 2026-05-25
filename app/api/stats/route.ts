@@ -2,10 +2,32 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildStatsSummary } from "@/lib/stats";
 
-export async function GET() {
+function getDeviceIdFromRequest(request: Request): string | null {
+  const deviceId = request.headers.get("x-device-id")?.trim();
+  if (!deviceId || deviceId.length > 128) {
+    return null;
+  }
+  return deviceId;
+}
+
+export async function GET(request: Request) {
+  const deviceId = getDeviceIdFromRequest(request);
+  if (!deviceId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "missing_device_id",
+          message: "x-device-id header is required",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   try {
     const sessions = await prisma.session.findMany({
-      where: { type: "WORK" },
+      where: { type: "WORK", deviceId },
       select: {
         durationSec: true,
         startedAt: true,

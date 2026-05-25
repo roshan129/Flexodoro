@@ -7,6 +7,7 @@ interface SessionPayloadInput {
 }
 
 interface SessionPayload {
+  deviceId: string;
   mode: "FIXED" | "FLEXIBLE";
   type?: "WORK" | "BREAK";
   durationSec: number;
@@ -14,7 +15,7 @@ interface SessionPayload {
   endedAt?: string;
 }
 
-const ALLOWED_KEYS = new Set(["mode", "type", "durationSec", "startedAt", "endedAt"]);
+const ALLOWED_KEYS = new Set(["deviceId", "mode", "type", "durationSec", "startedAt", "endedAt"]);
 const ALLOWED_MODES = new Set(["FIXED", "FLEXIBLE"]);
 const ALLOWED_TYPES = new Set(["WORK", "BREAK"]);
 
@@ -50,6 +51,18 @@ function validateSessionPayload(body: SessionPayloadInput): ValidationIssue[] {
       field: "mode",
       code: "invalid_enum",
       message: "mode must be one of: FIXED, FLEXIBLE",
+    });
+  }
+
+  if (
+    typeof body.deviceId !== "string" ||
+    body.deviceId.trim().length === 0 ||
+    body.deviceId.length > 128
+  ) {
+    issues.push({
+      field: "deviceId",
+      code: "invalid_string",
+      message: "deviceId must be a non-empty string up to 128 chars",
     });
   }
 
@@ -115,6 +128,7 @@ function validateSessionPayload(body: SessionPayloadInput): ValidationIssue[] {
 
 function toSessionPayload(body: SessionPayloadInput): SessionPayload {
   return {
+    deviceId: body.deviceId as string,
     mode: body.mode as SessionPayload["mode"],
     type: body.type as SessionPayload["type"] | undefined,
     durationSec: body.durationSec as number,
@@ -174,6 +188,7 @@ export async function POST(request: Request) {
   try {
     const session = await prisma.session.create({
       data: {
+        deviceId: body.deviceId.trim(),
         mode: body.mode,
         type: body.type ?? "WORK",
         durationSec: body.durationSec,
