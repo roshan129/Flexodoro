@@ -203,9 +203,11 @@ The Figma timer also calls this hook and maps its UI sound choices to the shared
 - `endedAt`: optional DateTime
 - `createdAt`: DateTime default `now()`
 
-`prisma.config.ts` reads `DATABASE_URL` from the environment. `lib/prisma.ts` creates `PrismaClient` with `PrismaPg` adapter and falls back to:
+`prisma.config.ts` reads `DATABASE_URL` from the environment. `lib/prisma.ts` creates `PrismaClient` with `PrismaPg` adapter and uses this fallback only outside production:
 
 `postgresql://postgres:postgres@localhost:5432/flexodoro?schema=public`
+
+Important production guard: if `NODE_ENV === "production"` and `DATABASE_URL` is missing, app startup throws an explicit error and refuses localhost fallback. This prevents silent misconfiguration in hosted environments.
 
 The Prisma client is cached on `global.prisma` outside production to avoid dev hot-reload connection churn.
 
@@ -217,6 +219,7 @@ The Prisma client is cached on `global.prisma` outside production to avoid dev h
 - Accepts `mode`, optional `type`, `durationSec`, `startedAt`, optional `endedAt`.
 - Writes a `Session` through Prisma.
 - Performs structured validation with explicit `400`/`422` responses for malformed JSON, invalid payload shape, enum/date/duration errors, unknown fields, and invalid `endedAt < startedAt` ranges.
+- On Prisma known request errors, logs include Prisma `code` and `meta` to improve production diagnosis while still returning a generic `500`.
 
 `GET /api/stats`
 
@@ -235,7 +238,10 @@ The Prisma client is cached on `global.prisma` outside production to avoid dev h
 `GET /api/health`
 
 - File: `app/api/health/route.ts`
-- Health endpoint.
+- Readiness-oriented health endpoint.
+- Checks DB connectivity (`SELECT 1`) and `Session` schema readiness (`prisma.session.findFirst`).
+- Returns `200` with `status: "ok"` when checks pass.
+- Returns `503` with `status: "degraded"` and error details when checks fail.
 
 ## Stats Aggregation
 
@@ -319,6 +325,9 @@ This means theme toggling is no longer hardcoded dark-only.
 
 9. Design/prototype artifacts are intentionally present:
    `design/` is source/reference material and ignored by TypeScript/ESLint. Do not treat it as mounted runtime app code unless explicitly asked.
+
+10. Production DB readiness dependency:
+   Deployments require both a reachable `DATABASE_URL` and applied Prisma schema (`Session` table). `GET /api/health` now surfaces these failures directly (`degraded`) instead of only indicating liveness.
 
 ## Good Future Work Paths
 
