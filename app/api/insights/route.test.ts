@@ -14,6 +14,10 @@ import { GET } from "./route";
 const mockedFindMany = vi.mocked(prisma.session.findMany);
 
 describe("GET /api/insights", () => {
+  const request = new Request("http://localhost/api/insights", {
+    headers: { "x-device-id": "device-123" },
+  });
+
   beforeEach(() => {
     mockedFindMany.mockReset();
   });
@@ -25,7 +29,7 @@ describe("GET /api/insights", () => {
       { durationSec: 900, startedAt: new Date(2026, 4, 16, 14, 0, 0) },
     ]);
 
-    const response = await GET();
+    const response = await GET(request);
     const json = await response.json();
 
     expect(response.status).toBe(200);
@@ -47,7 +51,7 @@ describe("GET /api/insights", () => {
         ?.totalDurationSec,
     ).toBe(3000);
     expect(mockedFindMany).toHaveBeenCalledWith({
-      where: { type: "WORK" },
+      where: { type: "WORK", deviceId: "device-123" },
       select: {
         durationSec: true,
         startedAt: true,
@@ -59,7 +63,7 @@ describe("GET /api/insights", () => {
   it("returns 500 when data fetch fails", async () => {
     mockedFindMany.mockRejectedValueOnce(new Error("db error"));
 
-    const response = await GET();
+    const response = await GET(request);
     const json = await response.json();
 
     expect(response.status).toBe(500);
@@ -67,5 +71,14 @@ describe("GET /api/insights", () => {
       success: false,
       message: "Failed to compute insights",
     });
+  });
+
+  it("returns 400 when x-device-id header is missing", async () => {
+    const response = await GET(new Request("http://localhost/api/insights"));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error.code).toBe("missing_device_id");
+    expect(mockedFindMany).not.toHaveBeenCalled();
   });
 });

@@ -18,10 +18,13 @@ enum SessionType {
 
 model Session {
   id          String      @id @default(cuid())
+  deviceId    String
   mode        SessionMode
   type        SessionType @default(WORK)
   durationSec Int
   startedAt   DateTime
   endedAt     DateTime?
   createdAt   DateTime    @default(now())
+
+  @@index([deviceId, type, startedAt])
 }

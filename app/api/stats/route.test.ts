@@ -14,6 +14,10 @@ import { GET } from "./route";
 const mockedFindMany = vi.mocked(prisma.session.findMany);
 
 describe("GET /api/stats", () => {
+  const request = new Request("http://localhost/api/stats", {
+    headers: { "x-device-id": "device-123" },
+  });
+
   beforeEach(() => {
     mockedFindMany.mockReset();
   });
@@ -24,7 +28,7 @@ describe("GET /api/stats", () => {
       { durationSec: 1800, startedAt: new Date(2026, 4, 16, 10, 0, 0) },
     ]);
 
-    const response = await GET();
+    const response = await GET(request);
     const json = await response.json();
 
     expect(response.status).toBe(200);
@@ -38,7 +42,7 @@ describe("GET /api/stats", () => {
     );
     expect(json.data.weeklyTrend).toHaveLength(7);
     expect(mockedFindMany).toHaveBeenCalledWith({
-      where: { type: "WORK" },
+      where: { type: "WORK", deviceId: "device-123" },
       select: {
         durationSec: true,
         startedAt: true,
@@ -50,7 +54,7 @@ describe("GET /api/stats", () => {
   it("returns 500 when data fetch fails", async () => {
     mockedFindMany.mockRejectedValueOnce(new Error("db error"));
 
-    const response = await GET();
+    const response = await GET(request);
     const json = await response.json();
 
     expect(response.status).toBe(500);
@@ -58,5 +62,14 @@ describe("GET /api/stats", () => {
       success: false,
       message: "Failed to compute stats",
     });
+  });
+
+  it("returns 400 when x-device-id header is missing", async () => {
+    const response = await GET(new Request("http://localhost/api/stats"));
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error.code).toBe("missing_device_id");
+    expect(mockedFindMany).not.toHaveBeenCalled();
   });
 });
