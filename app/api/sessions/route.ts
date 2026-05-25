@@ -204,6 +204,16 @@ export async function POST(request: Request) {
         code: error.code,
         meta: error.meta,
       });
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to save session",
+          errorCode: error.code,
+          errorMeta: process.env.NODE_ENV === "development" ? error.meta : undefined,
+        },
+        { status: 500 },
+      );
     } else {
       console.error("Failed to save session", error);
     }
