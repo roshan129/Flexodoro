@@ -1065,6 +1065,29 @@ export function TimerScreen() {
   const isTimerRunning = phase !== 'idle' && !paused;
   const activeSound = isMusicPlaying ? TRACK_TO_SOUND[selectedTrackId] : null;
 
+  useEffect(() => {
+    useAppStore.setState({
+      status: isTimerRunning ? "running" : phase === "idle" ? "idle" : "paused",
+    });
+  }, [isTimerRunning, phase]);
+
+  useEffect(() => {
+    if (!isTimerRunning) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isTimerRunning]);
+
   const handleCloseMusicPanel = useCallback(() => {
     setMusicOpen(false);
 
@@ -1355,7 +1378,7 @@ export function TimerScreen() {
   const handleModeSwitch = (m: Mode) => {
     if (mode === m) return;
 
-    if (phase !== 'idle') {
+    if (isTimerRunning) {
       setPendingMode(m);
       return;
     }

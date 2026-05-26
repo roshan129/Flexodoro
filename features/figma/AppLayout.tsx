@@ -11,9 +11,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const isDarkMode = useAppStore((state) => state.isDarkMode);
+  const status = useAppStore((state) => state.status);
   const toggleDarkMode = useAppStore((state) => state.toggleDarkMode);
+  const isTimerRunning = status === "running";
 
-  const timerActive = pathname === "/app";
+  const timerActive = pathname === "/";
   const statsActive = pathname === "/app/stats";
 
   return (
@@ -85,6 +87,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </Link>
             <Link
               href="/app/stats"
+              onClick={(event) => {
+                if (!isTimerRunning) {
+                  return;
+                }
+
+                const shouldLeave = window.confirm(
+                  "A timer session is currently running. Do you want to leave the timer and open Stats?",
+                );
+
+                if (!shouldLeave) {
+                  event.preventDefault();
+                }
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
