@@ -14,6 +14,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Imported reference files from Figma export (not part of Next runtime):
     "design/**",
+    "flexo-design/**",
   ]),
 ]);
 

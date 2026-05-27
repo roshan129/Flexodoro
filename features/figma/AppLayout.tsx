@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart2, Timer, Zap, Moon, Sun } from "lucide-react";
+import { BarChart2, BookOpen, Timer, Zap, Moon, Sun } from "lucide-react";
 import { type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/store/use-app-store";
@@ -17,6 +17,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const timerActive = pathname === "/";
   const statsActive = pathname === "/app/stats";
+  const blogActive = pathname === "/app/blog";
 
   return (
     <div
@@ -118,6 +119,25 @@ export function AppLayout({ children }: { children: ReactNode }) {
             >
               <BarChart2 size={14} />
               Stats
+            </Link>
+            <Link
+              href="/app/blog"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                color: blogActive ? "#A78BFA" : "var(--muted)",
+                background: blogActive ? "rgba(124, 92, 252, 0.1)" : "transparent",
+                textDecoration: "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <BookOpen size={14} />
+              Blog
             </Link>
           </nav>
 
