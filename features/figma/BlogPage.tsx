@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -78,43 +79,99 @@ The Pomodoro Technique isn't magic, but for ADHD brains, its built-in urgency an
   {
     id: 'deep-work-science',
     title: 'The Neuroscience of Deep Work',
-    subtitle: 'What happens in your brain during deep focus — and how to get there faster',
+    subtitle: 'What happens in your brain during deep focus — and why getting started is the hardest part',
     category: 'science',
     readTime: 7,
     date: 'May 15, 2026',
     tags: ['Neuroscience', 'Deep Work', 'Flow State'],
     emoji: '🔬',
     excerpt:
-      "Deep focus isn't mystical — it's a specific brain state you can learn to enter reliably. Here's what the research says.",
+      "Deep focus isn't magic. It's a neurological state you can learn to enter more consistently once you understand the friction at the start.",
     content: `## What Is Deep Work, Neurologically?
 
-Cal Newport popularized the term *deep work*, but the underlying neurological state has been studied for decades. When you enter genuine deep focus, several measurable changes occur in your brain:
+Deep work feels mysterious when you're inside it.
 
-**Prefrontal cortex engagement**: Your executive control network ramps up, allowing you to hold complex information in working memory and suppress distractions.
+Hours disappear. Distracting thoughts fade into the background. Difficult problems suddenly feel manageable. You stop forcing focus and start flowing with it.
 
-**Default Mode Network suppression**: The DMN — the part of your brain that wanders, daydreams, and second-guesses — quiets down. This is the neural signature of being "in the zone."
+But deep focus isn't magic. It's a real neurological state - and understanding how it works can help you enter it more consistently.
 
-**Gamma wave activity**: EEG studies show bursts of gamma frequency brain waves (30–100 Hz) during complex problem-solving and creative insight.
+## Why Focus Feels So Hard at First
 
-## The Ramp-Up Period
+One of the biggest misconceptions about productivity is the idea that focus is something you can instantly switch on.
 
-Here's the critical insight most productivity advice ignores: **deep focus is not a switch you flip**.
+In reality, the first 10–20 minutes of focused work are often the hardest.
 
-Research by neuroscientist Andrew Huberman and others suggests it takes **10–20 minutes of sustained, low-distraction focus** before your brain fully commits to a task. This is why interruptions are so costly — you're not just losing the time you were interrupted, you're losing the ramp-up time required to return.
+Your brain keeps searching for easier dopamine:
+- checking messages
+- opening new tabs
+- switching songs
+- refreshing notifications
+- doing literally anything except the task in front of you
 
-## Dopamine and Focus
+That resistance is normal.
 
-Dopamine is often called the "pleasure chemical," but its primary function is *motivation and anticipation*. Before deep work sessions:
+Deep work starts as friction before it becomes flow.
 
-- **Cold exposure** (even brief) spikes dopamine 2.5×
-- **Caffeine** blocks adenosine receptors, reducing the subjective effort of focusing
-- **Setting clear intent** ("I will write 500 words about X") activates goal-directed dopamine pathways
+If you stay with the task long enough without context-switching, your brain gradually settles into a more stable attention state.
 
-## Building the Habit
+This is why interruptions are so expensive. You're not just losing the minute you spent replying to a message - you're losing the mental ramp-up required to fully focus again.
 
-Consistent deep work isn't about willpower — it's about environmental design. Your workspace, your rituals, and your timer all become *cues* that trigger the focus state. The more consistently you use them, the faster your brain enters deep work.
+## What Changes in Your Brain During Deep Work?
 
-This is why tools like Flexodoro matter: they're not just timers — they're consistency anchors for your focus habit.`,
+When you enter genuine deep focus, several measurable changes occur in the brain.
+
+### Your executive control network becomes more active
+
+The prefrontal cortex - responsible for planning, decision-making, and attention control - ramps up activity. This helps you hold complex information in working memory while filtering out distractions.
+
+### Mental noise quiets down
+
+The Default Mode Network (DMN), associated with mind-wandering and self-referential thinking, becomes less active. This is part of why deep work feels mentally quieter than normal distracted thinking.
+
+You stop constantly evaluating whether you should be doing something else.
+
+## Dopamine and Attention
+
+Dopamine is often misunderstood as just a "pleasure chemical." In reality, it's heavily tied to motivation, anticipation, and goal-directed behavior.
+
+Small environmental cues can make focused work feel significantly easier:
+- a consistent workspace
+- a clear task goal
+- a visible timer
+- reducing notifications before starting
+
+Even the simple act of defining a target like:
+
+> "I will write 500 words."
+
+gives your brain a concrete objective to organize around.
+
+The clearer the goal, the less energy your brain spends deciding what to do next.
+
+## Why Rituals Matter More Than Motivation
+
+Most people think deep work comes from discipline.
+
+More often, it comes from environment and repetition.
+
+When you consistently use the same setup - same desk, same playlist, same timer, same ritual - your brain starts associating those cues with focused attention.
+
+Over time, entering deep work requires less activation energy.
+
+You're training your brain to recognize:
+> "This is the time we focus."
+
+This is why focus tools matter.
+
+A timer isn't just counting minutes. It's creating structure around attention. It's reducing ambiguity. It's helping your brain cross the gap between distraction and immersion.
+
+That's the idea behind Flexodoro's Flexible Mode.
+
+Traditional Pomodoro timers assume productivity is linear: work for 25 minutes, stop, repeat.
+
+But real focus often isn't linear. Sometimes it takes 20 minutes just to settle in. Other times you accidentally enter a two-hour flow state and stopping would completely break momentum.
+
+Flexible Mode adapts to that reality - giving structure when you need it without interrupting deep focus when it finally arrives.`,
   },
   {
     id: 'adhd-executive-function',
@@ -174,38 +231,124 @@ Flexodoro's flexible mode is designed with exactly this in mind: when you hit a 
     tags: ['Breaks', 'Rest', 'Recovery'],
     emoji: '☕',
     excerpt:
-      'Research shows that the quality of your break matters as much as the break itself. The wrong kind of rest leaves you more depleted.',
+      'Not all breaks restore attention. The right kind of rest helps your brain recover, while the wrong kind can leave you even more mentally exhausted.',
     content: `## Why Breaks Are Non-Negotiable
 
-Sustained focus depletes adenosine clearance capacity and creates fatigue in the prefrontal cortex. Breaks aren't laziness — they're a biological requirement for maintaining cognitive performance.
+Ever notice how some breaks leave you refreshed while others leave you even more mentally exhausted?
 
-The question isn't whether to take breaks; it's what to do during them.
+You step away from work for 10 minutes, scroll social media for a bit, and somehow come back feeling noisier, foggier, and less motivated than before.
 
-## What Actually Restores Focus
+That's because your brain doesn't experience all breaks the same way.
 
-**1. Non-sleep deep rest (NSDR)**
-A 10–20 minute NSDR protocol (a body-scan relaxation or yoga nidra) has been shown to restore dopamine levels to baseline after cognitive depletion. Even a 5-minute version has measurable effects.
+Some activities genuinely restore attention.
+Others just replace one form of stimulation with another.
 
-**2. Nature exposure**
-Attention Restoration Theory (ART) proposes that natural environments restore directed attention because they engage *involuntary* attention — you notice interesting things without effort. Even looking at nature images helps, though walking outside is best.
+## Why Breaks Matter So Much
 
-**3. Physical movement**
-Light walking — especially outdoors — increases BDNF (brain-derived neurotrophic factor), which supports synaptic plasticity and cognitive function. A 5-minute walk beats sitting on your phone.
+Focused work is mentally expensive.
 
-**4. Social connection**
-Brief, positive social interactions release oxytocin and reduce cortisol. A quick conversation during a break can improve mood and subsequent focus.
+Your brain isn't designed to maintain intense concentration indefinitely. After long periods of focus, attention starts becoming less stable. Decision-making gets slower. Distractions become harder to resist. Mental fatigue quietly builds in the background.
 
-## What Depletes Focus Further
+Breaks aren't laziness.
+They're part of the focus cycle itself.
 
-- **Doom-scrolling**: Social media activates dopamine in a scattered, unsatisfying way that fragments attention rather than restoring it.
-- **Email and Slack**: Work-adjacent activities don't let the prefrontal cortex rest — they just switch the task.
-- **High-stimulation content**: Action-heavy videos or aggressive music maintain a high cognitive arousal state that prevents recovery.
+The real question isn't:
+> "Should I take a break?"
 
-## Flexodoro's Approach
+It's:
+> "What kind of break actually helps my brain recover?"
 
-The app's break calculator is built on this research: longer focus sessions earn proportionally longer breaks, giving your brain adequate recovery before the next sprint. The Focus Music panel continues during breaks for ambient support.
+## What Actually Restores Focus?
 
-A good break isn't just time off — it's *active recovery*. Treat it that way.`,
+### 1. Deep rest without stimulation
+
+Sometimes the most effective break is also the simplest:
+lying down, closing your eyes, and letting your brain slow down for a few minutes.
+
+Practices like guided relaxation, yoga nidra, or NSDR (non-sleep deep rest) can help reduce mental fatigue and restore attention after intense focus.
+
+Even five to ten minutes can make a noticeable difference.
+
+The key is low stimulation.
+
+No notifications.
+No scrolling.
+No constant input.
+
+Just mental quiet.
+
+## 2. Going outside
+
+Your brain rests differently in nature than it does online.
+
+Natural environments gently hold your attention without demanding effort. Trees moving in the wind, changing light, distant sounds — your brain engages with them passively instead of fighting to concentrate.
+
+That's why even a short walk outside often feels more refreshing than sitting on your phone for the same amount of time.
+
+You don't need a forest.
+Even a few minutes outdoors helps.
+
+## 3. Physical movement
+
+One of the worst break habits is staying mentally overloaded while remaining physically still.
+
+A short walk, stretching, or light movement helps reset attention and reduce the feeling of cognitive stagnation that builds during long work sessions.
+
+Movement also creates a psychological reset:
+> the work session feels complete, and the next one feels easier to begin.
+
+Even five minutes matters.
+
+## 4. Brief social interaction
+
+Humans regulate stress socially.
+
+A short positive conversation — even a quick check-in with a friend or coworker — can reduce stress and mentally reset your mood before returning to work.
+
+The important part is that it feels restorative, not draining.
+
+## What Makes Breaks Worse?
+
+### Doom-scrolling
+
+Social media often gives your brain fragmented bursts of stimulation without actual recovery.
+
+You consume dozens of unrelated pieces of information in minutes:
+videos, arguments, headlines, notifications, memes.
+
+Your attention never fully settles.
+
+So even after "resting," your brain still feels scattered.
+
+### Email and work messages
+
+Checking Slack or email during a break doesn't let your brain disengage from work.
+
+You're still cognitively "on."
+
+The task changed.
+The mental load didn't.
+
+### High-stimulation content
+
+Fast-paced videos, loud content, or constant information overload can keep your nervous system activated instead of helping it recover.
+
+Sometimes the best break is the least stimulating one.
+
+## Breaks Should Match the Work
+
+A five-minute break might be enough after answering emails.
+
+It probably isn't enough after 90 minutes of deep concentration.
+
+Longer focus sessions create deeper mental fatigue, which means your brain usually needs more recovery time afterward.
+
+That's the idea behind Flexodoro's break system.
+
+Instead of forcing identical breaks every cycle, Flexible Mode scales recovery based on the intensity and duration of your focus session.
+
+Because good breaks aren't wasted time.
+They're what make sustained focus possible in the first place.`,
   },
   {
     id: 'flow-state-guide',
@@ -307,48 +450,125 @@ Hyperfocus is a feature, not a bug — but it needs guardrails to work in your f
   {
     id: 'sleep-and-focus',
     title: 'Sleep Is Your Focus Supercharger',
-    subtitle: 'The research on sleep and cognitive performance is unambiguous — and underrated',
+    subtitle: 'The research on sleep and cognitive performance is unambiguous — and massively underrated',
     category: 'science',
     readTime: 4,
     date: 'April 14, 2026',
     tags: ['Sleep', 'Cognitive Performance', 'Recovery'],
     emoji: '🌙',
     excerpt:
-      "No productivity technique compensates for sleep deprivation. Here's the science, and what to do about it.",
-    content: `## Sleep and the Brain
+      "Most focus problems are sleep problems in disguise. A tired brain becomes worse at attention, decision-making, memory, and resisting distraction.",
+    content: `## What Sleep Actually Does for Your Brain
 
-During sleep, your brain does maintenance work it can't do while awake: clearing metabolic waste via the glymphatic system, consolidating memories from short-term to long-term storage, restoring neurotransmitter levels, and rebalancing the prefrontal cortex's emotional regulation circuitry.
+Sleep is not passive downtime.
 
-These are not optional processes. They are the biological foundation of cognitive function.
+While you're asleep, your brain is doing active maintenance work:
+- consolidating memories
+- regulating emotions
+- restoring attention systems
+- clearing metabolic waste
+- resetting neurotransmitter balance
+
+These aren't optional background processes.
+They're the biological foundation of cognitive performance.
+
+When sleep quality drops, focus is usually one of the first things to suffer.
 
 ## What Sleep Deprivation Does to Focus
 
-Losing even 1–2 hours of sleep has measurable effects on:
+Even losing 1–2 hours of sleep has measurable effects on cognitive function.
 
-- **Sustained attention**: You miss more, react slower, and make more errors
-- **Working memory**: You can hold fewer items in mind simultaneously
-- **Inhibitory control**: Suppressing distraction becomes harder
-- **Emotional regulation**: Frustration tolerance drops; task-switching anxiety increases
+A sleep-deprived brain struggles with:
 
-Research by Matthew Walker's lab at UC Berkeley shows that 17–19 hours awake produces cognitive impairment equivalent to a blood alcohol level of 0.05%. You wouldn't choose to work drunk.
+### Sustained attention
+
+You miss details more easily.
+Reaction time slows down.
+Simple mistakes become more common.
+
+### Working memory
+
+Holding multiple ideas in mind becomes harder.
+
+This is why tired people often reread the same sentence repeatedly or lose track of what they were doing halfway through a task.
+
+### Inhibitory control
+
+Filtering distractions takes more effort.
+
+Notifications feel more tempting.
+Task-switching becomes harder to resist.
+Focus feels fragile.
+
+### Emotional regulation
+
+Sleep deprivation lowers frustration tolerance and increases emotional reactivity.
+
+Small problems feel bigger.
+Difficult tasks feel heavier.
+Motivation drops faster.
+
+Research has even shown that staying awake for long enough can impair cognitive performance similarly to alcohol intoxication.
+
+You wouldn't intentionally try to work drunk.
+Yet many people regularly try to do deep work while severely sleep deprived.
 
 ## Sleep and ADHD
 
-ADHD and sleep problems are highly comorbid. ADHD brains frequently have a *delayed circadian phase* — the biological clock runs later, making early rising feel unnatural and sleep onset difficult. This isn't a character flaw; it's neurobiology.
+Sleep problems are extremely common in people with ADHD.
 
-Additionally, ADHD medications (stimulants) can interfere with sleep onset if taken too late in the day.
+Many ADHD brains naturally run on a delayed schedule, making early sleep and early waking feel unusually difficult. This isn't laziness or lack of discipline — it's partly biological.
 
-## Practical Optimizations
+At the same time, poor sleep makes ADHD symptoms significantly worse:
+- distractibility increases
+- emotional regulation gets harder
+- task initiation becomes more difficult
+- focus feels less stable
 
-**Consistent wake time**: More powerful than consistent bedtime. Anchoring your wake time regulates the circadian clock.
+It becomes a feedback loop:
+poor sleep worsens attention, and attention difficulties make healthy sleep routines harder to maintain.
 
-**Morning light**: 5–10 minutes of outdoor light within 30 minutes of waking sets the circadian timer for the day.
+## Practical Ways to Improve Sleep Quality
 
-**Caffeine cutoff**: Adenosine builds up during the day (creating sleep pressure). Caffeine blocks adenosine but doesn't eliminate it — it just delays the signal. Cutting caffeine by 2 PM lets adenosine accumulate for better sleep onset.
+### Keep your wake-up time consistent
 
-**Temperature**: Core body temperature needs to drop 1–3°F for sleep onset. A cool bedroom (65–68°F / 18–20°C) accelerates this.
+A stable wake-up time matters more than most people realize.
 
-No timer technique, focus music, or productivity app substitutes for a rested brain. Sleep isn't a sacrifice you make for productivity — it is productivity.`,
+Your brain regulates sleep through circadian rhythms, and waking at wildly different times every day confuses that system.
+
+Consistency helps your body predict when to feel alert and when to feel tired.
+
+### Get morning sunlight
+
+Morning light is one of the strongest signals your brain receives for regulating energy and sleep timing.
+
+Even 5–10 minutes of outdoor light shortly after waking can help stabilize your circadian rhythm and improve nighttime sleep quality.
+
+### Cut caffeine earlier than you think
+
+Caffeine doesn't remove tiredness.
+It temporarily blocks your brain's ability to feel it.
+
+That means late-day caffeine can delay sleep pressure even when you feel exhausted.
+
+For many people, stopping caffeine by early afternoon noticeably improves sleep onset.
+
+### Keep your sleeping environment cool
+
+Your body temperature naturally drops before sleep.
+
+A cooler room helps that process happen more efficiently, making it easier to fall asleep and stay asleep.
+
+## Sleep Is a Productivity Tool
+
+No timer technique, focus playlist, or productivity app can fully compensate for a chronically exhausted brain.
+
+Sleep isn't time stolen from productivity.
+
+Sleep is what makes sustained focus, emotional stability, learning, and deep work possible in the first place.
+
+A rested brain doesn't just work harder.
+It works better.`,
   },
   {
     id: 'distraction-management',
@@ -541,6 +761,41 @@ function renderMarkdown(content: string): React.ReactNode[] {
           {line.replace('## ', '')}
         </h2>
       );
+    } else if (line.startsWith('### ')) {
+      nodes.push(
+        <h3
+          key={i}
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: '#E8E8F0',
+            fontFamily: "'Space Grotesk', sans-serif",
+            letterSpacing: '-0.01em',
+            marginTop: 24,
+            marginBottom: 10,
+          }}
+        >
+          {line.replace('### ', '')}
+        </h3>
+      );
+    } else if (line.startsWith('> ')) {
+      nodes.push(
+        <blockquote
+          key={i}
+          style={{
+            margin: '8px 0 16px',
+            padding: '10px 14px',
+            borderLeft: '3px solid rgba(124, 92, 252, 0.5)',
+            background: 'rgba(124, 92, 252, 0.08)',
+            borderRadius: 8,
+            color: '#C8C8D8',
+            fontSize: 14,
+            lineHeight: 1.7,
+          }}
+        >
+          {line.replace(/^>\s*/, '')}
+        </blockquote>
+      );
     } else if (line.startsWith('**') && line.endsWith('**') && line.length > 4) {
       // standalone bold line
       nodes.push(
@@ -594,8 +849,6 @@ function renderMarkdown(content: string): React.ReactNode[] {
 }
 
 function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) {
-  const cfg = CATEGORY_CONFIG[post.category];
-
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -723,9 +976,25 @@ function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) 
 // ─── Main Blog Page ───────────────────────────────────────────────────────────
 
 export function BlogPage() {
-  const [openPost, setOpenPost] = useState<BlogPost | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const openPostId = searchParams.get('post');
+  const openPost = POSTS.find((post) => post.id === openPostId) ?? null;
   const [activeCategory, setActiveCategory] = useState<BlogPost['category'] | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [openPostId]);
+
+  const openPostInUrl = (post: BlogPost) => {
+    router.push(`${pathname}?post=${post.id}`, { scroll: false });
+  };
+
+  const closePostInUrl = () => {
+    router.replace(pathname, { scroll: false });
+  };
 
   const filtered = POSTS.filter((p) => {
     const matchCat = activeCategory === 'all' || p.category === activeCategory;
@@ -754,7 +1023,7 @@ export function BlogPage() {
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <AnimatePresence mode="wait">
           {openPost ? (
-            <BlogPostView key="post" post={openPost} onBack={() => setOpenPost(null)} />
+            <BlogPostView key="post" post={openPost} onBack={closePostInUrl} />
           ) : (
             <motion.div
               key="list"
@@ -897,7 +1166,7 @@ export function BlogPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
                     >
-                      <BlogCard post={post} onOpen={setOpenPost} />
+                      <BlogCard post={post} onOpen={openPostInUrl} />
                     </motion.div>
                   ))}
                 </div>
