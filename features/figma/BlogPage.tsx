@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -594,8 +595,6 @@ function renderMarkdown(content: string): React.ReactNode[] {
 }
 
 function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) {
-  const cfg = CATEGORY_CONFIG[post.category];
-
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -723,9 +722,21 @@ function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) 
 // ─── Main Blog Page ───────────────────────────────────────────────────────────
 
 export function BlogPage() {
-  const [openPost, setOpenPost] = useState<BlogPost | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const openPostId = searchParams.get('post');
+  const openPost = POSTS.find((post) => post.id === openPostId) ?? null;
   const [activeCategory, setActiveCategory] = useState<BlogPost['category'] | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const openPostInUrl = (post: BlogPost) => {
+    router.push(`${pathname}?post=${post.id}`, { scroll: false });
+  };
+
+  const closePostInUrl = () => {
+    router.replace(pathname, { scroll: false });
+  };
 
   const filtered = POSTS.filter((p) => {
     const matchCat = activeCategory === 'all' || p.category === activeCategory;
@@ -754,7 +765,7 @@ export function BlogPage() {
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <AnimatePresence mode="wait">
           {openPost ? (
-            <BlogPostView key="post" post={openPost} onBack={() => setOpenPost(null)} />
+            <BlogPostView key="post" post={openPost} onBack={closePostInUrl} />
           ) : (
             <motion.div
               key="list"
@@ -897,7 +908,7 @@ export function BlogPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
                     >
-                      <BlogCard post={post} onOpen={setOpenPost} />
+                      <BlogCard post={post} onOpen={openPostInUrl} />
                     </motion.div>
                   ))}
                 </div>
