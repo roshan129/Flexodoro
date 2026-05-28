@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -450,48 +450,125 @@ Hyperfocus is a feature, not a bug — but it needs guardrails to work in your f
   {
     id: 'sleep-and-focus',
     title: 'Sleep Is Your Focus Supercharger',
-    subtitle: 'The research on sleep and cognitive performance is unambiguous — and underrated',
+    subtitle: 'The research on sleep and cognitive performance is unambiguous — and massively underrated',
     category: 'science',
     readTime: 4,
     date: 'April 14, 2026',
     tags: ['Sleep', 'Cognitive Performance', 'Recovery'],
     emoji: '🌙',
     excerpt:
-      "No productivity technique compensates for sleep deprivation. Here's the science, and what to do about it.",
-    content: `## Sleep and the Brain
+      "Most focus problems are sleep problems in disguise. A tired brain becomes worse at attention, decision-making, memory, and resisting distraction.",
+    content: `## What Sleep Actually Does for Your Brain
 
-During sleep, your brain does maintenance work it can't do while awake: clearing metabolic waste via the glymphatic system, consolidating memories from short-term to long-term storage, restoring neurotransmitter levels, and rebalancing the prefrontal cortex's emotional regulation circuitry.
+Sleep is not passive downtime.
 
-These are not optional processes. They are the biological foundation of cognitive function.
+While you're asleep, your brain is doing active maintenance work:
+- consolidating memories
+- regulating emotions
+- restoring attention systems
+- clearing metabolic waste
+- resetting neurotransmitter balance
+
+These aren't optional background processes.
+They're the biological foundation of cognitive performance.
+
+When sleep quality drops, focus is usually one of the first things to suffer.
 
 ## What Sleep Deprivation Does to Focus
 
-Losing even 1–2 hours of sleep has measurable effects on:
+Even losing 1–2 hours of sleep has measurable effects on cognitive function.
 
-- **Sustained attention**: You miss more, react slower, and make more errors
-- **Working memory**: You can hold fewer items in mind simultaneously
-- **Inhibitory control**: Suppressing distraction becomes harder
-- **Emotional regulation**: Frustration tolerance drops; task-switching anxiety increases
+A sleep-deprived brain struggles with:
 
-Research by Matthew Walker's lab at UC Berkeley shows that 17–19 hours awake produces cognitive impairment equivalent to a blood alcohol level of 0.05%. You wouldn't choose to work drunk.
+### Sustained attention
+
+You miss details more easily.
+Reaction time slows down.
+Simple mistakes become more common.
+
+### Working memory
+
+Holding multiple ideas in mind becomes harder.
+
+This is why tired people often reread the same sentence repeatedly or lose track of what they were doing halfway through a task.
+
+### Inhibitory control
+
+Filtering distractions takes more effort.
+
+Notifications feel more tempting.
+Task-switching becomes harder to resist.
+Focus feels fragile.
+
+### Emotional regulation
+
+Sleep deprivation lowers frustration tolerance and increases emotional reactivity.
+
+Small problems feel bigger.
+Difficult tasks feel heavier.
+Motivation drops faster.
+
+Research has even shown that staying awake for long enough can impair cognitive performance similarly to alcohol intoxication.
+
+You wouldn't intentionally try to work drunk.
+Yet many people regularly try to do deep work while severely sleep deprived.
 
 ## Sleep and ADHD
 
-ADHD and sleep problems are highly comorbid. ADHD brains frequently have a *delayed circadian phase* — the biological clock runs later, making early rising feel unnatural and sleep onset difficult. This isn't a character flaw; it's neurobiology.
+Sleep problems are extremely common in people with ADHD.
 
-Additionally, ADHD medications (stimulants) can interfere with sleep onset if taken too late in the day.
+Many ADHD brains naturally run on a delayed schedule, making early sleep and early waking feel unusually difficult. This isn't laziness or lack of discipline — it's partly biological.
 
-## Practical Optimizations
+At the same time, poor sleep makes ADHD symptoms significantly worse:
+- distractibility increases
+- emotional regulation gets harder
+- task initiation becomes more difficult
+- focus feels less stable
 
-**Consistent wake time**: More powerful than consistent bedtime. Anchoring your wake time regulates the circadian clock.
+It becomes a feedback loop:
+poor sleep worsens attention, and attention difficulties make healthy sleep routines harder to maintain.
 
-**Morning light**: 5–10 minutes of outdoor light within 30 minutes of waking sets the circadian timer for the day.
+## Practical Ways to Improve Sleep Quality
 
-**Caffeine cutoff**: Adenosine builds up during the day (creating sleep pressure). Caffeine blocks adenosine but doesn't eliminate it — it just delays the signal. Cutting caffeine by 2 PM lets adenosine accumulate for better sleep onset.
+### Keep your wake-up time consistent
 
-**Temperature**: Core body temperature needs to drop 1–3°F for sleep onset. A cool bedroom (65–68°F / 18–20°C) accelerates this.
+A stable wake-up time matters more than most people realize.
 
-No timer technique, focus music, or productivity app substitutes for a rested brain. Sleep isn't a sacrifice you make for productivity — it is productivity.`,
+Your brain regulates sleep through circadian rhythms, and waking at wildly different times every day confuses that system.
+
+Consistency helps your body predict when to feel alert and when to feel tired.
+
+### Get morning sunlight
+
+Morning light is one of the strongest signals your brain receives for regulating energy and sleep timing.
+
+Even 5–10 minutes of outdoor light shortly after waking can help stabilize your circadian rhythm and improve nighttime sleep quality.
+
+### Cut caffeine earlier than you think
+
+Caffeine doesn't remove tiredness.
+It temporarily blocks your brain's ability to feel it.
+
+That means late-day caffeine can delay sleep pressure even when you feel exhausted.
+
+For many people, stopping caffeine by early afternoon noticeably improves sleep onset.
+
+### Keep your sleeping environment cool
+
+Your body temperature naturally drops before sleep.
+
+A cooler room helps that process happen more efficiently, making it easier to fall asleep and stay asleep.
+
+## Sleep Is a Productivity Tool
+
+No timer technique, focus playlist, or productivity app can fully compensate for a chronically exhausted brain.
+
+Sleep isn't time stolen from productivity.
+
+Sleep is what makes sustained focus, emotional stability, learning, and deep work possible in the first place.
+
+A rested brain doesn't just work harder.
+It works better.`,
   },
   {
     id: 'distraction-management',
@@ -906,6 +983,10 @@ export function BlogPage() {
   const openPost = POSTS.find((post) => post.id === openPostId) ?? null;
   const [activeCategory, setActiveCategory] = useState<BlogPost['category'] | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [openPostId]);
 
   const openPostInUrl = (post: BlogPost) => {
     router.push(`${pathname}?post=${post.id}`, { scroll: false });
