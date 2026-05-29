@@ -17,7 +17,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const timerActive = pathname === "/";
   const statsActive = pathname === "/app/stats";
-  const blogActive = pathname === "/app/blog";
+  const blogActive = pathname.startsWith("/app/blog");
 
   return (
     <div
