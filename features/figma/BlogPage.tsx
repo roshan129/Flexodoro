@@ -1,8 +1,9 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getBlogPostUrl } from '@/features/figma/blog-post-index';
 import {
   ArrowLeft,
   Clock,
@@ -975,11 +976,9 @@ function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) 
 
 // ─── Main Blog Page ───────────────────────────────────────────────────────────
 
-export function BlogPage() {
+export function BlogPage({ initialPostId }: { initialPostId?: string }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const openPostId = searchParams.get('post');
+  const openPostId = initialPostId ?? null;
   const openPost = POSTS.find((post) => post.id === openPostId) ?? null;
   const [activeCategory, setActiveCategory] = useState<BlogPost['category'] | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -989,11 +988,11 @@ export function BlogPage() {
   }, [openPostId]);
 
   const openPostInUrl = (post: BlogPost) => {
-    router.push(`${pathname}?post=${post.id}`, { scroll: false });
+    router.push(getBlogPostUrl(post.id), { scroll: false });
   };
 
   const closePostInUrl = () => {
-    router.replace(pathname, { scroll: false });
+    router.push('/app/blog', { scroll: false });
   };
 
   const filtered = POSTS.filter((p) => {
