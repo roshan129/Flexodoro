@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -646,16 +647,13 @@ function CategoryBadge({ category }: { category: BlogPost['category'] }) {
 
 function BlogCard({
   post,
-  onOpen,
 }: {
   post: BlogPost;
-  onOpen: (post: BlogPost) => void;
 }) {
   return (
-    <motion.button
-      whileHover={{ y: -2, scale: 1.005 }}
-      whileTap={{ scale: 0.99 }}
-      onClick={() => onOpen(post)}
+    <Link
+      href={getBlogPostUrl(post.id)}
+      scroll={false}
       style={{
         display: 'block',
         width: '100%',
@@ -666,6 +664,7 @@ function BlogCard({
         padding: 20,
         cursor: 'pointer',
         transition: 'border-color 0.15s',
+        textDecoration: 'none',
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLElement).style.borderColor = 'rgba(124, 92, 252, 0.25)';
@@ -731,7 +730,7 @@ function BlogCard({
           </div>
         </div>
       </div>
-    </motion.button>
+    </Link>
   );
 }
 
@@ -956,10 +955,11 @@ function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) 
           display: 'flex',
           alignItems: 'center',
           gap: 12,
+          flexWrap: 'wrap',
         }}
       >
         <Sparkles size={20} color="#A78BFA" />
-        <div>
+        <div style={{ flex: 1, minWidth: 220 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#E8E8F0', marginBottom: 2 }}>
             Ready to apply this?
           </div>
@@ -967,6 +967,24 @@ function BlogPostView({ post, onBack }: { post: BlogPost; onBack: () => void }) 
             Start a focus session in Flexodoro and put these insights into practice.
           </div>
         </div>
+        <Link
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: '#A78BFA',
+            color: '#0B0B14',
+            fontSize: 13,
+            fontWeight: 700,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Open the timer
+        </Link>
       </div>
 
       <div style={{ height: 40 }} />
@@ -986,10 +1004,6 @@ export function BlogPage({ initialPostId }: { initialPostId?: string }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [openPostId]);
-
-  const openPostInUrl = (post: BlogPost) => {
-    router.push(getBlogPostUrl(post.id), { scroll: false });
-  };
 
   const closePostInUrl = () => {
     router.push('/app/blog', { scroll: false });
@@ -1164,8 +1178,10 @@ export function BlogPage({ initialPostId }: { initialPostId?: string }) {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
+                      whileHover={{ y: -2, scale: 1.005 }}
+                      whileTap={{ scale: 0.99 }}
                     >
-                      <BlogCard post={post} onOpen={openPostInUrl} />
+                      <BlogCard post={post} />
                     </motion.div>
                   ))}
                 </div>
