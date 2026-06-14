@@ -17,20 +17,19 @@ function getAudioContextConstructor() {
   return audioWindow.AudioContext ?? audioWindow.webkitAudioContext ?? null;
 }
 
-function createNoiseBuffer(context: AudioContext): AudioBuffer {
-  const bufferSize = context.sampleRate * 2;
-  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-  const data = buffer.getChannelData(0);
-
-  for (let i = 0; i < bufferSize; i += 1) {
-    data[i] = Math.random() * 2 - 1;
-  }
-
-  return buffer;
-}
-
 const FADE_OUT_TIME_CONSTANT_SECONDS = 0.18;
 const STOP_AFTER_FADE_MS = 650;
+const TRACK_VOLUME_CAPS: Partial<Record<"deep-focus" | "soft-rain" | "alpha-pulse", number>> = {
+  "deep-focus": 0.25,
+  "alpha-pulse": 0.25,
+};
+
+function getEffectiveTrackVolume(
+  trackId: "deep-focus" | "soft-rain" | "alpha-pulse",
+  volume: number,
+) {
+  return Math.min(volume, TRACK_VOLUME_CAPS[trackId] ?? 1);
+}
 
 export function useFocusAudioEngine() {
   const selectedTrackId = useAppStore((state) => state.selectedTrackId);
@@ -41,6 +40,7 @@ export function useFocusAudioEngine() {
   const masterRef = useRef<GainNode | null>(null);
   const stopCurrentRef = useRef<(() => void) | null>(null);
   const stopAfterFadeRef = useRef<number | null>(null);
+  const rainAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const ensureAudioContext = useCallback(() => {
     if (typeof window === "undefined") {
@@ -87,6 +87,24 @@ export function useFocusAudioEngine() {
       stopCurrent();
     } catch {
       // Oscillator/source nodes can throw if the browser already stopped them.
+    }
+  }, []);
+
+  const stopRainTrack = useCallback(() => {
+    const rainAudio = rainAudioRef.current;
+    rainAudioRef.current = null;
+
+    if (!rainAudio) {
+      return;
+    }
+
+    try {
+      rainAudio.pause();
+      rainAudio.currentTime = 0;
+      rainAudio.src = "";
+      rainAudio.load();
+    } catch {
+      // Audio elements can throw if the browser has already torn them down.
     }
   }, []);
 
@@ -193,28 +211,28 @@ export function useFocusAudioEngine() {
     }
 
     if (selectedTrackId === "soft-rain") {
-      const noiseSource = context.createBufferSource();
-      const filter = context.createBiquadFilter();
+      const rainAudio = new Audio("/sounds/10-min-rain-sound.mp3");
+      rainAudio.preload = "auto";
+      rainAudio.loop = true;
+      rainAudio.volume = 1;
+
+      const rainSource = context.createMediaElementSource(rainAudio);
       const rainGain = context.createGain();
 
-      noiseSource.buffer = createNoiseBuffer(context);
-      noiseSource.loop = true;
-
-      filter.type = "lowpass";
-      filter.frequency.value = 1400;
       rainGain.gain.value = 0.35;
-
-      noiseSource.connect(filter);
-      filter.connect(rainGain);
+      rainSource.connect(rainGain);
       rainGain.connect(masterGain);
 
-      noiseSource.start();
+      rainAudioRef.current = rainAudio;
+
+      void rainAudio.play().catch(() => {
+        // Playback may be blocked until the next user gesture.
+      });
 
       cleanup = () => {
-        noiseSource.stop();
-        noiseSource.disconnect();
-        filter.disconnect();
+        rainSource.disconnect();
         rainGain.disconnect();
+        stopRainTrack();
       };
     }
 
@@ -258,7 +276,11 @@ export function useFocusAudioEngine() {
     };
 
     masterGain.gain.cancelScheduledValues(context.currentTime);
-    masterGain.gain.setTargetAtTime(musicVolume, context.currentTime, 0.08);
+    masterGain.gain.setTargetAtTime(
+      getEffectiveTrackVolume(selectedTrackId, musicVolume),
+      context.currentTime,
+      0.08,
+    );
 
     return undefined;
   }, [
@@ -268,6 +290,7 @@ export function useFocusAudioEngine() {
     ensureAudioContext,
     clearStopAfterFade,
     stopCurrentSource,
+    stopRainTrack,
   ]);
 
   useEffect(() => {
@@ -280,16 +303,19 @@ export function useFocusAudioEngine() {
 
     masterGain.gain.cancelScheduledValues(context.currentTime);
     masterGain.gain.setTargetAtTime(
-      isMusicPlaying ? musicVolume : 0,
+      isMusicPlaying
+        ? getEffectiveTrackVolume(selectedTrackId, musicVolume)
+        : 0,
       context.currentTime,
       0.08,
     );
-  }, [musicVolume, isMusicPlaying]);
+  }, [musicVolume, isMusicPlaying, selectedTrackId]);
 
   useEffect(() => {
     return () => {
       clearStopAfterFade();
       stopCurrentSource();
+      stopRainTrack();
     };
-  }, [clearStopAfterFade, stopCurrentSource]);
+  }, [clearStopAfterFade, stopCurrentSource, stopRainTrack]);
 }
