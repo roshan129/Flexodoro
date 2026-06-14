@@ -1038,7 +1038,7 @@ export function TimerScreen() {
     tapSoundRef.current = new Audio('/sounds/tap_notification.mp3');
     tapSoundRef.current.preload = 'auto';
 
-    bellSoundRef.current = new Audio('/sounds/bell_notification.mp3');
+    bellSoundRef.current = new Audio('/sounds/bell_break_long_tone.mp3');
     bellSoundRef.current.preload = 'auto';
   }, []);
 
