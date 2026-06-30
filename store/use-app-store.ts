@@ -5,7 +5,7 @@ export type TimerStatus = "idle" | "running" | "paused";
 export type TimerMode = "fixed" | "flexible";
 export type TimerPhase = "work" | "break";
 
-export type MusicTrackId = "deep-focus" | "soft-rain" | "alpha-pulse";
+export type MusicTrackId = "deep-focus" | "soft-rain" | "alpha-pulse" | "binaural-40hz";
 
 interface AppState {
   isDarkMode: boolean;
