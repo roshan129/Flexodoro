@@ -15,7 +15,7 @@ export const FOCUS_TRACKS: FocusTrack[] = [
   {
     id: "soft-rain",
     name: "Soft Rain",
-    description: "Noise-based ambience",
+    description: "10-minute looping rain recording",
   },
   {
     id: "alpha-pulse",

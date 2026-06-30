@@ -196,6 +196,7 @@ function ProgressRing({ progress, color }: { progress: number; color: string }) 
         strokeWidth="5"
         strokeLinecap="round"
         strokeDasharray={RING_CIRC}
+        initial={{ strokeDashoffset: RING_CIRC }}
         animate={{ strokeDashoffset: offset }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
         style={{ filter: `drop-shadow(0 0 10px ${color}80)` }}
