@@ -15,11 +15,16 @@ export const FOCUS_TRACKS: FocusTrack[] = [
   {
     id: "soft-rain",
     name: "Soft Rain",
-    description: "Noise-based ambience",
+    description: "10-minute looping rain recording",
   },
   {
     id: "alpha-pulse",
-    name: "Alpha Pulse",
-    description: "Gentle rhythmic pulse",
+    name: "White Noise",
+    description: "Continuous noise ambience",
+  },
+  {
+    id: "binaural-40hz",
+    name: "40Hz Binaural",
+    description: "Stereo tone pair for headphones",
   },
 ];

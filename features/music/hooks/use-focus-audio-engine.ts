@@ -17,20 +17,34 @@ function getAudioContextConstructor() {
   return audioWindow.AudioContext ?? audioWindow.webkitAudioContext ?? null;
 }
 
-function createNoiseBuffer(context: AudioContext): AudioBuffer {
-  const bufferSize = context.sampleRate * 2;
+const FADE_OUT_TIME_CONSTANT_SECONDS = 0.18;
+const STOP_AFTER_FADE_MS = 650;
+const TRACK_VOLUME_CAPS: Partial<
+  Record<"deep-focus" | "soft-rain" | "alpha-pulse" | "binaural-40hz", number>
+> = {
+  "deep-focus": 0.25,
+  "alpha-pulse": 0.25,
+  "binaural-40hz": 0.2,
+};
+
+function getEffectiveTrackVolume(
+  trackId: "deep-focus" | "soft-rain" | "alpha-pulse" | "binaural-40hz",
+  volume: number,
+) {
+  return Math.min(volume, TRACK_VOLUME_CAPS[trackId] ?? 1);
+}
+
+function createNoiseBuffer(context: AudioContext, durationSeconds = 2) {
+  const bufferSize = Math.max(1, Math.floor(context.sampleRate * durationSeconds));
   const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-  const data = buffer.getChannelData(0);
+  const channel = buffer.getChannelData(0);
 
   for (let i = 0; i < bufferSize; i += 1) {
-    data[i] = Math.random() * 2 - 1;
+    channel[i] = Math.random() * 2 - 1;
   }
 
   return buffer;
 }
-
-const FADE_OUT_TIME_CONSTANT_SECONDS = 0.18;
-const STOP_AFTER_FADE_MS = 650;
 
 export function useFocusAudioEngine() {
   const selectedTrackId = useAppStore((state) => state.selectedTrackId);
@@ -41,6 +55,7 @@ export function useFocusAudioEngine() {
   const masterRef = useRef<GainNode | null>(null);
   const stopCurrentRef = useRef<(() => void) | null>(null);
   const stopAfterFadeRef = useRef<number | null>(null);
+  const rainAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const ensureAudioContext = useCallback(() => {
     if (typeof window === "undefined") {
@@ -87,6 +102,24 @@ export function useFocusAudioEngine() {
       stopCurrent();
     } catch {
       // Oscillator/source nodes can throw if the browser already stopped them.
+    }
+  }, []);
+
+  const stopRainTrack = useCallback(() => {
+    const rainAudio = rainAudioRef.current;
+    rainAudioRef.current = null;
+
+    if (!rainAudio) {
+      return;
+    }
+
+    try {
+      rainAudio.pause();
+      rainAudio.currentTime = 0;
+      rainAudio.src = "";
+      rainAudio.load();
+    } catch {
+      // Audio elements can throw if the browser has already torn them down.
     }
   }, []);
 
@@ -193,61 +226,81 @@ export function useFocusAudioEngine() {
     }
 
     if (selectedTrackId === "soft-rain") {
-      const noiseSource = context.createBufferSource();
-      const filter = context.createBiquadFilter();
+      const rainAudio = new Audio("/sounds/10-min-rain-sound.mp3");
+      rainAudio.preload = "auto";
+      rainAudio.loop = true;
+      rainAudio.volume = 1;
+
+      const rainSource = context.createMediaElementSource(rainAudio);
       const rainGain = context.createGain();
+
+      rainGain.gain.value = 0.35;
+      rainSource.connect(rainGain);
+      rainGain.connect(masterGain);
+
+      rainAudioRef.current = rainAudio;
+
+      void rainAudio.play().catch(() => {
+        // Playback may be blocked until the next user gesture.
+      });
+
+      cleanup = () => {
+        rainSource.disconnect();
+        rainGain.disconnect();
+        stopRainTrack();
+      };
+    }
+
+    if (selectedTrackId === "alpha-pulse") {
+      const noiseSource = context.createBufferSource();
+      const noiseGain = context.createGain();
 
       noiseSource.buffer = createNoiseBuffer(context);
       noiseSource.loop = true;
+      noiseGain.gain.value = 0.07;
 
-      filter.type = "lowpass";
-      filter.frequency.value = 1400;
-      rainGain.gain.value = 0.35;
-
-      noiseSource.connect(filter);
-      filter.connect(rainGain);
-      rainGain.connect(masterGain);
-
+      noiseSource.connect(noiseGain);
+      noiseGain.connect(masterGain);
       noiseSource.start();
 
       cleanup = () => {
         noiseSource.stop();
         noiseSource.disconnect();
-        filter.disconnect();
-        rainGain.disconnect();
+        noiseGain.disconnect();
       };
     }
 
-    if (selectedTrackId === "alpha-pulse") {
-      const carrier = context.createOscillator();
-      const pulseGain = context.createGain();
-      const pulseLfo = context.createOscillator();
-      const pulseDepth = context.createGain();
+    if (selectedTrackId === "binaural-40hz") {
+      const leftOsc = context.createOscillator();
+      const rightOsc = context.createOscillator();
+      const leftGain = context.createGain();
+      const rightGain = context.createGain();
+      const merger = context.createChannelMerger(2);
 
-      carrier.type = "sine";
-      carrier.frequency.value = 220;
-      pulseGain.gain.value = 0.18;
+      leftOsc.type = "sine";
+      rightOsc.type = "sine";
+      leftOsc.frequency.value = 130;
+      rightOsc.frequency.value = 170;
+      leftGain.gain.value = 0.324;
+      rightGain.gain.value = 0.324;
 
-      pulseLfo.type = "triangle";
-      pulseLfo.frequency.value = 8;
-      pulseDepth.gain.value = 0.12;
+      leftOsc.connect(leftGain);
+      rightOsc.connect(rightGain);
+      leftGain.connect(merger, 0, 0);
+      rightGain.connect(merger, 0, 1);
+      merger.connect(masterGain);
 
-      pulseLfo.connect(pulseDepth);
-      pulseDepth.connect(pulseGain.gain);
-
-      carrier.connect(pulseGain);
-      pulseGain.connect(masterGain);
-
-      carrier.start();
-      pulseLfo.start();
+      leftOsc.start();
+      rightOsc.start();
 
       cleanup = () => {
-        carrier.stop();
-        pulseLfo.stop();
-        carrier.disconnect();
-        pulseGain.disconnect();
-        pulseLfo.disconnect();
-        pulseDepth.disconnect();
+        leftOsc.stop();
+        rightOsc.stop();
+        leftOsc.disconnect();
+        rightOsc.disconnect();
+        leftGain.disconnect();
+        rightGain.disconnect();
+        merger.disconnect();
       };
     }
 
@@ -258,7 +311,11 @@ export function useFocusAudioEngine() {
     };
 
     masterGain.gain.cancelScheduledValues(context.currentTime);
-    masterGain.gain.setTargetAtTime(musicVolume, context.currentTime, 0.08);
+    masterGain.gain.setTargetAtTime(
+      getEffectiveTrackVolume(selectedTrackId, musicVolume),
+      context.currentTime,
+      0.08,
+    );
 
     return undefined;
   }, [
@@ -268,6 +325,7 @@ export function useFocusAudioEngine() {
     ensureAudioContext,
     clearStopAfterFade,
     stopCurrentSource,
+    stopRainTrack,
   ]);
 
   useEffect(() => {
@@ -280,16 +338,19 @@ export function useFocusAudioEngine() {
 
     masterGain.gain.cancelScheduledValues(context.currentTime);
     masterGain.gain.setTargetAtTime(
-      isMusicPlaying ? musicVolume : 0,
+      isMusicPlaying
+        ? getEffectiveTrackVolume(selectedTrackId, musicVolume)
+        : 0,
       context.currentTime,
       0.08,
     );
-  }, [musicVolume, isMusicPlaying]);
+  }, [musicVolume, isMusicPlaying, selectedTrackId]);
 
   useEffect(() => {
     return () => {
       clearStopAfterFade();
       stopCurrentSource();
+      stopRainTrack();
     };
-  }, [clearStopAfterFade, stopCurrentSource]);
+  }, [clearStopAfterFade, stopCurrentSource, stopRainTrack]);
 }

@@ -19,6 +19,7 @@ import {
   Waves,
   Wind,
   Music,
+  Headphones,
   Flag,
   SkipForward,
 } from 'lucide-react';
@@ -56,19 +57,22 @@ type Sound = { id: string; label: string; icon: ReactNode; color: string };
 const SOUNDS: Sound[] = [
   { id: 'rain', label: 'Rain', icon: <Waves size={16} />, color: '#06B6D4' },
   { id: 'white', label: 'White Noise', icon: <Wind size={16} />, color: '#8B5CF6' },
-  { id: 'ambient', label: 'Ambient', icon: <Music size={16} />, color: '#10B981' },
+  { id: 'deep-focus', label: 'Deep Focus', icon: <Music size={16} />, color: '#10B981' },
+  { id: 'binaural', label: '40Hz Binaural', icon: <Headphones size={16} />, color: '#F59E0B' },
 ];
 
 const SOUND_TO_TRACK: Record<string, MusicTrackId> = {
   rain: "soft-rain",
   white: "alpha-pulse",
-  ambient: "deep-focus",
+  "deep-focus": "deep-focus",
+  binaural: "binaural-40hz",
 };
 
 const TRACK_TO_SOUND: Record<MusicTrackId, string> = {
-  "deep-focus": "ambient",
+  "deep-focus": "deep-focus",
   "soft-rain": "rain",
   "alpha-pulse": "white",
+  "binaural-40hz": "binaural",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -196,6 +200,7 @@ function ProgressRing({ progress, color }: { progress: number; color: string }) 
         strokeWidth="5"
         strokeLinecap="round"
         strokeDasharray={RING_CIRC}
+        initial={{ strokeDashoffset: RING_CIRC }}
         animate={{ strokeDashoffset: offset }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
         style={{ filter: `drop-shadow(0 0 10px ${color}80)` }}
