@@ -131,7 +131,7 @@ UI/audio/theme state:
 
 - `isMinimalUi`
 - `isFullscreenMode`
-- `selectedTrackId`: `deep-focus | soft-rain | alpha-pulse`
+- `selectedTrackId`: `deep-focus | soft-rain | alpha-pulse | binaural-40hz`
 - `isMusicPlaying`
 - `musicVolume`
 - `isDarkMode`
@@ -183,18 +183,23 @@ Music state is shared through Zustand. Audio generation lives in `features/music
 
 Tracks:
 
-- `deep-focus`: generated oscillator tones.
-- `soft-rain`: generated looping noise buffer with lowpass filter.
-- `alpha-pulse`: generated pulsing oscillator.
+- `deep-focus`: generated layered oscillator drone.
+- `soft-rain`: real looping MP3 rain recording.
+- `alpha-pulse`: generated white noise buffer, despite the legacy id name.
+- `binaural-40hz`: true stereo binaural pair with separate left/right oscillators.
 
 The audio engine:
 
 - Uses Web Audio, including Safari `webkitAudioContext` fallback.
 - Unlocks audio on first pointer/touch/key gesture.
 - Fades gain in/out and cleans up source nodes.
+- Routes `soft-rain` through an HTML audio element plus `MediaElementSource`.
+- Builds `binaural-40hz` as separate left/right channels merged into stereo for headphones.
+- Caps per-track loudness for the more piercing tracks.
 - Reacts to `selectedTrackId`, `isMusicPlaying`, and `musicVolume`.
 
 The Figma timer also calls this hook and maps its UI sound choices to the shared track IDs.
+Its visible music options are currently Deep Focus, White Noise, Soft Rain, and 40Hz Binaural.
 
 ## Data Model
 
