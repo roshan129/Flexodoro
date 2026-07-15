@@ -19,7 +19,12 @@ export const FOCUS_TRACKS: FocusTrack[] = [
   },
   {
     id: "alpha-pulse",
-    name: "Alpha Pulse",
-    description: "Gentle rhythmic pulse",
+    name: "White Noise",
+    description: "Continuous noise ambience",
+  },
+  {
+    id: "binaural-40hz",
+    name: "40Hz Binaural",
+    description: "Stereo tone pair for headphones",
   },
 ];

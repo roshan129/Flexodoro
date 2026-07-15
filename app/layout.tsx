@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s | Flexodoro",
   },
   description:
-    "Flexible focus timer with adaptive breaks, ambient music, and actionable productivity insights.",
+    "Flexible focus timer with adaptive breaks, focus music, and actionable productivity insights.",
   applicationName: "Flexodoro",
   keywords: [
     "pomodoro",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Flexodoro",
     description:
-      "Flexible focus timer with adaptive breaks, ambient music, and actionable productivity insights.",
+      "Flexible focus timer with adaptive breaks, focus music, and actionable productivity insights.",
     type: "website",
     url: appUrl,
     siteName: "Flexodoro",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Flexodoro",
     description:
-      "Flexible focus timer with adaptive breaks, ambient music, and actionable productivity insights.",
+      "Flexible focus timer with adaptive breaks, focus music, and actionable productivity insights.",
   },
 };
 

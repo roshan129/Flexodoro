@@ -29,7 +29,7 @@ export function LandingSection() {
             Work with your flow, not against it.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-muted sm:text-base">
-            Flexible focus timer with deep-work mode, ambient sounds, and insights that show
+            Flexible focus timer with deep-work mode, focus sounds, and insights that show
             when you focus best.
           </p>
 
@@ -55,7 +55,7 @@ export function LandingSection() {
             </div>
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm font-semibold">Focus Music</p>
-              <p className="mt-1 text-xs text-muted">Rain, ambient, and pulse tracks with volume control.</p>
+              <p className="mt-1 text-xs text-muted">Rain, deep focus, and pulse tracks with volume control.</p>
             </div>
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm font-semibold">Insight Dashboard</p>

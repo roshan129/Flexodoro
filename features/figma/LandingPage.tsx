@@ -843,7 +843,7 @@ export function LandingPage() {
                 for deep focus
               </h2>
               <p style={{ fontSize: 14, color: MUTED, lineHeight: 1.7, marginBottom: 24, maxWidth: 380 }}>
-                Carefully selected ambient sounds designed to enhance concentration
+                Carefully selected focus sounds designed to enhance concentration
                 without distraction. Auto-plays when your session begins.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -868,7 +868,7 @@ export function LandingPage() {
                 { icon: <Waves size={20} />, name: 'Rain', desc: 'Soft rainfall', color: '#06B6D4' },
                 { icon: <Wind size={20} />, name: 'White Noise', desc: 'Pure white noise', color: '#8B5CF6' },
                 { icon: <Coffee size={20} />, name: 'Café', desc: 'Coffee shop hum', color: '#F59E0B' },
-                { icon: <Music size={20} />, name: 'Ambient', desc: 'Lo-fi ambient', color: '#10B981' },
+                { icon: <Music size={20} />, name: 'Deep Focus', desc: 'Warm drone with slow movement', color: '#10B981' },
               ].map((sound, i) => (
                 <motion.div
                   key={sound.name}

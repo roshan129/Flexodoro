@@ -19,16 +19,31 @@ function getAudioContextConstructor() {
 
 const FADE_OUT_TIME_CONSTANT_SECONDS = 0.18;
 const STOP_AFTER_FADE_MS = 650;
-const TRACK_VOLUME_CAPS: Partial<Record<"deep-focus" | "soft-rain" | "alpha-pulse", number>> = {
+const TRACK_VOLUME_CAPS: Partial<
+  Record<"deep-focus" | "soft-rain" | "alpha-pulse" | "binaural-40hz", number>
+> = {
   "deep-focus": 0.25,
   "alpha-pulse": 0.25,
+  "binaural-40hz": 0.2,
 };
 
 function getEffectiveTrackVolume(
-  trackId: "deep-focus" | "soft-rain" | "alpha-pulse",
+  trackId: "deep-focus" | "soft-rain" | "alpha-pulse" | "binaural-40hz",
   volume: number,
 ) {
   return Math.min(volume, TRACK_VOLUME_CAPS[trackId] ?? 1);
+}
+
+function createNoiseBuffer(context: AudioContext, durationSeconds = 2) {
+  const bufferSize = Math.max(1, Math.floor(context.sampleRate * durationSeconds));
+  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+  const channel = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i += 1) {
+    channel[i] = Math.random() * 2 - 1;
+  }
+
+  return buffer;
 }
 
 export function useFocusAudioEngine() {
@@ -237,35 +252,55 @@ export function useFocusAudioEngine() {
     }
 
     if (selectedTrackId === "alpha-pulse") {
-      const carrier = context.createOscillator();
-      const pulseGain = context.createGain();
-      const pulseLfo = context.createOscillator();
-      const pulseDepth = context.createGain();
+      const noiseSource = context.createBufferSource();
+      const noiseGain = context.createGain();
 
-      carrier.type = "sine";
-      carrier.frequency.value = 220;
-      pulseGain.gain.value = 0.18;
+      noiseSource.buffer = createNoiseBuffer(context);
+      noiseSource.loop = true;
+      noiseGain.gain.value = 0.07;
 
-      pulseLfo.type = "triangle";
-      pulseLfo.frequency.value = 8;
-      pulseDepth.gain.value = 0.12;
-
-      pulseLfo.connect(pulseDepth);
-      pulseDepth.connect(pulseGain.gain);
-
-      carrier.connect(pulseGain);
-      pulseGain.connect(masterGain);
-
-      carrier.start();
-      pulseLfo.start();
+      noiseSource.connect(noiseGain);
+      noiseGain.connect(masterGain);
+      noiseSource.start();
 
       cleanup = () => {
-        carrier.stop();
-        pulseLfo.stop();
-        carrier.disconnect();
-        pulseGain.disconnect();
-        pulseLfo.disconnect();
-        pulseDepth.disconnect();
+        noiseSource.stop();
+        noiseSource.disconnect();
+        noiseGain.disconnect();
+      };
+    }
+
+    if (selectedTrackId === "binaural-40hz") {
+      const leftOsc = context.createOscillator();
+      const rightOsc = context.createOscillator();
+      const leftGain = context.createGain();
+      const rightGain = context.createGain();
+      const merger = context.createChannelMerger(2);
+
+      leftOsc.type = "sine";
+      rightOsc.type = "sine";
+      leftOsc.frequency.value = 130;
+      rightOsc.frequency.value = 170;
+      leftGain.gain.value = 0.324;
+      rightGain.gain.value = 0.324;
+
+      leftOsc.connect(leftGain);
+      rightOsc.connect(rightGain);
+      leftGain.connect(merger, 0, 0);
+      rightGain.connect(merger, 0, 1);
+      merger.connect(masterGain);
+
+      leftOsc.start();
+      rightOsc.start();
+
+      cleanup = () => {
+        leftOsc.stop();
+        rightOsc.stop();
+        leftOsc.disconnect();
+        rightOsc.disconnect();
+        leftGain.disconnect();
+        rightGain.disconnect();
+        merger.disconnect();
       };
     }
 
