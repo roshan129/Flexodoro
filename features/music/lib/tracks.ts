@@ -8,11 +8,6 @@ export interface FocusTrack {
 
 export const FOCUS_TRACKS: FocusTrack[] = [
   {
-    id: "deep-focus",
-    name: "Deep Focus",
-    description: "Warm drone with slow movement",
-  },
-  {
     id: "soft-rain",
     name: "Soft Rain",
     description: "10-minute looping rain recording",
