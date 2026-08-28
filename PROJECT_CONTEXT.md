@@ -199,7 +199,7 @@ The audio engine:
 - Reacts to `selectedTrackId`, `isMusicPlaying`, and `musicVolume`.
 
 The Figma timer also calls this hook and maps its UI sound choices to the shared track IDs.
-Its visible music options are currently Deep Focus, White Noise, Soft Rain, and 40Hz Binaural.
+Its visible music options are currently White Noise, Soft Rain, and 40Hz Binaural.
 
 ## Data Model
 

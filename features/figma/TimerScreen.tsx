@@ -18,7 +18,6 @@ import {
   VolumeX,
   Waves,
   Wind,
-  Music,
   Headphones,
   Flag,
   SkipForward,
@@ -57,7 +56,6 @@ type Sound = { id: string; label: string; icon: ReactNode; color: string };
 const SOUNDS: Sound[] = [
   { id: 'rain', label: 'Rain', icon: <Waves size={16} />, color: '#06B6D4' },
   { id: 'white', label: 'White Noise', icon: <Wind size={16} />, color: '#8B5CF6' },
-  { id: 'deep-focus', label: 'Deep Focus', icon: <Music size={16} />, color: '#10B981' },
   { id: 'binaural', label: '40Hz Binaural', icon: <Headphones size={16} />, color: '#F59E0B' },
 ];
 
@@ -1036,6 +1034,12 @@ export function TimerScreen() {
   }, [mode, resetTiming, setStoreMode]);
 
   useEffect(() => {
+    if (selectedTrackId === 'deep-focus') {
+      setSelectedTrackId('soft-rain');
+    }
+  }, [selectedTrackId, setSelectedTrackId]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
 
     defaultTitleRef.current = document.title;
@@ -1350,7 +1354,7 @@ export function TimerScreen() {
       return;
     }
 
-    const mappedTrack = SOUND_TO_TRACK[id] ?? "deep-focus";
+    const mappedTrack = SOUND_TO_TRACK[id] ?? "soft-rain";
     setSelectedTrackId(mappedTrack);
     setMusicPlaying(phase !== 'break');
   }, [phase, setMusicPlaying, setSelectedTrackId]);

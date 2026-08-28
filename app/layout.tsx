@@ -23,11 +23,11 @@ const appUrl = resolveSiteUrl(
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "Flexodoro",
+    default: "Pomodoro Timer Online – Focus & Deep Work Timer | Flexodoro",
     template: "%s | Flexodoro",
   },
   description:
-    "Flexible focus timer with adaptive breaks, focus music, and actionable productivity insights.",
+    "Free online Pomodoro timer for focused work and deep work. Use 25/5 or 40/10 sessions, flexible focus sessions, adaptive breaks, focus sounds, and productivity stats.",
   applicationName: "Flexodoro",
   keywords: [
     "pomodoro",
@@ -43,18 +43,18 @@ export const metadata: Metadata = {
     apple: "/favicon.ico",
   },
   openGraph: {
-    title: "Flexodoro",
+    title: "Pomodoro Timer Online – Focus & Deep Work Timer | Flexodoro",
     description:
-      "Flexible focus timer with adaptive breaks, focus music, and actionable productivity insights.",
+      "Free online Pomodoro timer for focused work and deep work. Use 25/5 or 40/10 sessions, flexible focus sessions, adaptive breaks, focus sounds, and productivity stats.",
     type: "website",
     url: appUrl,
     siteName: "Flexodoro",
   },
   twitter: {
     card: "summary",
-    title: "Flexodoro",
+    title: "Pomodoro Timer Online – Focus & Deep Work Timer | Flexodoro",
     description:
-      "Flexible focus timer with adaptive breaks, focus music, and actionable productivity insights.",
+      "Free online Pomodoro timer for focused work and deep work. Use 25/5 or 40/10 sessions, flexible focus sessions, adaptive breaks, focus sounds, and productivity stats.",
   },
 };
 
