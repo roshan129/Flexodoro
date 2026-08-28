@@ -68,7 +68,7 @@ export const useAppStore = create<AppState>()(
       suggestedBreakSeconds: defaultBreakMinutes * 60,
       isMinimalUi: false,
       isFullscreenMode: false,
-      selectedTrackId: "deep-focus",
+      selectedTrackId: "soft-rain",
       isMusicPlaying: false,
       musicVolume: 0.5,
 
