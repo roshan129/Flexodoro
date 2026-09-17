@@ -16,7 +16,9 @@
 
 ## Deployment
 - [ ] `DATABASE_URL` configured in Vercel
-- [ ] `NEXT_PUBLIC_APP_URL` configured to production domain
+- [ ] `NEXT_PUBLIC_APP_URL` configured as `https://www.flexodoro.com`
+- [ ] `https://flexodoro.com/*` permanently redirects to `https://www.flexodoro.com/*`
+- [ ] Legacy `flexpomodoro.vercel.app` URLs redirect from the Vercel project that owns them
 - [ ] Production deploy succeeds with no build errors
 - [ ] Smoke test complete on live URL (desktop + mobile)
 
@@ -24,3 +26,5 @@
 - [ ] Monitor server logs and API errors
 - [ ] Verify first real sessions are persisted
 - [ ] Validate analytics numbers against DB entries
+- [ ] Submit `/sitemap.xml` in the Search Console Domain property
+- [ ] Confirm Google-selected canonical is the matching `https://www.flexodoro.com` URL
