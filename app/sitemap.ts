@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 import { BLOG_POST_INDEX, getBlogPostUrl } from "@/features/figma/blog-post-index";
 
 const siteUrl = "https://www.flexodoro.com";
+const homepageLastModified = new Date("2026-09-16T00:00:00.000Z");
+const blogIndexLastModified = new Date(
+  Math.max(...BLOG_POST_INDEX.map((post) => new Date(post.date).getTime())),
+);
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogPostUrls: MetadataRoute.Sitemap = BLOG_POST_INDEX.map((post) => ({
@@ -14,33 +18,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: siteUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily",
+      lastModified: homepageLastModified,
+      changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${siteUrl}/landing`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${siteUrl}/app/stats`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.7,
-    },
-    {
       url: `${siteUrl}/app/blog`,
-      lastModified: new Date(),
+      lastModified: blogIndexLastModified,
       changeFrequency: "weekly",
       priority: 0.7,
-    },
-    {
-      url: `${siteUrl}/app/settings`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.6,
     },
     ...blogPostUrls,
   ];
