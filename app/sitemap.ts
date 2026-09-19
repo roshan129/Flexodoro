@@ -3,6 +3,7 @@ import { BLOG_POST_INDEX, getBlogPostUrl } from "@/features/figma/blog-post-inde
 
 const siteUrl = "https://www.flexodoro.com";
 const homepageLastModified = new Date("2026-09-16T00:00:00.000Z");
+const aboutLastModified = new Date("2026-09-19T00:00:00.000Z");
 const blogIndexLastModified = new Date(
   Math.max(...BLOG_POST_INDEX.map((post) => new Date(post.date).getTime())),
 );
@@ -27,6 +28,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: blogIndexLastModified,
       changeFrequency: "weekly",
       priority: 0.7,
+    },
+    {
+      url: `${siteUrl}/app/about`,
+      lastModified: aboutLastModified,
+      changeFrequency: "yearly",
+      priority: 0.5,
     },
     ...blogPostUrls,
   ];
