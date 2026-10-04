@@ -35,6 +35,7 @@ const FONT_DISPLAY = "'Space Grotesk', sans-serif";
 
 const WORK_DURATIONS = { '25/5': 25 * 60, '40/10': 40 * 60 } as const;
 const BREAK_DURATIONS = { '25/5': 5 * 60, '40/10': 10 * 60 } as const;
+const BREAK_PRESETS = [5, 10] as const;
 const FLEX_LOOP = 25 * 60;
 const MODE_STORAGE_KEY = 'flexodoro.timer.mode';
 
@@ -42,7 +43,9 @@ const RING_RADIUS = 130;
 const RING_CIRC = 2 * Math.PI * RING_RADIUS;
 
 type Mode = 'fixed' | 'flexible';
+type TimerTab = Mode | 'break';
 type Preset = '25/5' | '40/10';
+type BreakPreset = (typeof BREAK_PRESETS)[number];
 type Phase = 'idle' | 'work' | 'break';
 
 type TimerTiming = {
@@ -424,7 +427,7 @@ function ModeSwitchConfirmModal({
   onConfirm,
   onCancel,
 }: {
-  targetMode: Mode;
+  targetMode: TimerTab;
   workedSeconds: number;
   onConfirm: () => void;
   onCancel: () => void;
@@ -554,7 +557,7 @@ function ModeSwitchConfirmModal({
               boxShadow: '0 8px 24px rgba(124,92,252,0.35)',
             }}
           >
-            Switch to {targetMode === 'fixed' ? 'Fixed' : 'Flexible'}
+            Switch to {targetMode === 'fixed' ? 'Fixed' : targetMode === 'flexible' ? 'Flexible' : 'Break'}
           </button>
         </div>
       </motion.div>
@@ -927,6 +930,8 @@ export function TimerScreen() {
   const setMusicVolume = useAppStore((state) => state.setMusicVolume);
 
   const [preset, setPreset] = useState<Preset>('25/5');
+  const [activeTab, setActiveTab] = useState<TimerTab>(mode);
+  const [breakPreset, setBreakPreset] = useState<BreakPreset>(5);
   const [phase, setPhase] = useState<Phase>('idle');
   const [paused, setPaused] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -935,7 +940,7 @@ export function TimerScreen() {
   const [deepWork, setDeepWork] = useState(false);
   const [musicOpen, setMusicOpen] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
-  const [pendingMode, setPendingMode] = useState<Mode | null>(null);
+  const [pendingMode, setPendingMode] = useState<TimerTab | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [completedSessions, setCompletedSessions] = useState(0);
   const defaultTitleRef = useRef<string>("Flexodoro");
@@ -1024,6 +1029,7 @@ export function TimerScreen() {
     if (mode === 'fixed' && savedMode !== mode) {
       const frame = window.requestAnimationFrame(() => {
         setStoreMode(savedMode);
+        setActiveTab(savedMode);
         resetTiming();
       });
       window.localStorage.removeItem(MODE_STORAGE_KEY);
@@ -1221,13 +1227,24 @@ export function TimerScreen() {
   // ─── Actions ────────────────────────────────────────────────────────────────
   const handleStart = useCallback(() => {
     playTapSound();
+
+    if (activeTab === 'break') {
+      const durationSeconds = breakPreset * 60;
+      setBreakDur(durationSeconds);
+      startPhaseTiming(durationSeconds);
+      setPhase('break');
+      setPaused(false);
+      setMusicPlaying(false);
+      return;
+    }
+
     startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
     setPhase('work');
     setPaused(false);
     if (autoPlay && !isMusicPlaying) {
       setMusicPlaying(true);
     }
-  }, [mode, preset, autoPlay, isMusicPlaying, setMusicPlaying, playTapSound, startPhaseTiming]);
+  }, [activeTab, autoPlay, breakPreset, isMusicPlaying, mode, playTapSound, preset, setMusicPlaying, startPhaseTiming]);
 
   const handlePause = useCallback(() => {
     playTapSound();
@@ -1239,10 +1256,10 @@ export function TimerScreen() {
     playTapSound();
     resumeTiming();
     setPaused(false);
-    if (autoPlay) {
+    if (autoPlay && phase !== 'break') {
       setMusicPlaying(true);
     }
-  }, [autoPlay, resumeTiming, setMusicPlaying, playTapSound]);
+  }, [autoPlay, phase, resumeTiming, setMusicPlaying, playTapSound]);
 
   const handleStop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -1294,25 +1311,11 @@ export function TimerScreen() {
       if (e.code === 'Space' && !hasBlockingModal) {
         e.preventDefault();
         if (phase === 'idle') {
-          playTapSound();
-          startPhaseTiming(mode === 'fixed' ? WORK_DURATIONS[preset] : null);
-          setPhase('work');
-          setPaused(false);
-          if (autoPlay && !isMusicPlaying) {
-            setMusicPlaying(true);
-          }
+          handleStart();
         } else if (paused) {
-          playTapSound();
-          resumeTiming();
-          setPaused(false);
-          if (autoPlay) {
-            setMusicPlaying(true);
-          }
+          handleResume();
         } else {
-          playTapSound();
-          pauseTiming();
-          setPaused(true);
-          setMusicPlaying(false);
+          handlePause();
         }
       }
 
@@ -1335,17 +1338,11 @@ export function TimerScreen() {
     paused,
     deepWork,
     musicOpen,
-    mode,
-    preset,
-    autoPlay,
-    isMusicPlaying,
-    setMusicPlaying,
     handleCloseMusicPanel,
     handleEndSession,
-    playTapSound,
-    pauseTiming,
-    resumeTiming,
-    startPhaseTiming,
+    handlePause,
+    handleResume,
+    handleStart,
   ]);
 
   const handleSetActiveSound = useCallback((id: string | null) => {
@@ -1359,8 +1356,8 @@ export function TimerScreen() {
     setMusicPlaying(phase !== 'break');
   }, [phase, setMusicPlaying, setSelectedTrackId]);
 
-  const completeModeSwitch = useCallback((nextMode: Mode) => {
-    const worked = getWorkedSeconds();
+  const completeModeSwitch = useCallback((nextMode: TimerTab) => {
+    const sessionSeconds = phase === 'break' ? getElapsedSeconds() : getWorkedSeconds();
 
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -1371,23 +1368,26 @@ export function TimerScreen() {
     setPendingMode(null);
     setPaused(false);
     setPhase('idle');
-    setStoreMode(nextMode);
+    setActiveTab(nextMode);
+    if (nextMode !== 'break') {
+      setStoreMode(nextMode);
+    }
     resetTiming();
-    setBreakDur(0);
+    setBreakDur(nextMode === 'break' ? breakPreset * 60 : 0);
     setDeepWork(false);
     setMusicOpen(false);
     setMusicPlaying(false);
     setFeedbackMessage(
-      worked > 0
-        ? `Session ended at ${formatTime(worked)}.`
+      sessionSeconds > 0
+        ? `Session ended at ${formatTime(sessionSeconds)}.`
         : 'Session ended.',
     );
-  }, [getWorkedSeconds, resetTiming, setMusicPlaying, setStoreMode]);
+  }, [breakPreset, getElapsedSeconds, getWorkedSeconds, phase, resetTiming, setMusicPlaying, setStoreMode]);
 
-  const handleModeSwitch = (m: Mode) => {
-    if (mode === m) return;
+  const handleModeSwitch = (m: TimerTab) => {
+    if (activeTab === m) return;
 
-    if (isTimerRunning) {
+    if (phase !== 'idle') {
       setPendingMode(m);
       return;
     }
@@ -1399,7 +1399,12 @@ export function TimerScreen() {
     setShowBreakModal(false);
     setPaused(false);
     setPhase('idle');
-    setStoreMode(m);
+    setActiveTab(m);
+    if (m !== 'break') {
+      setStoreMode(m);
+    }
+    setBreakDur(m === 'break' ? breakPreset * 60 : 0);
+    setMusicPlaying(false);
     resetTiming();
   };
 
@@ -1409,8 +1414,15 @@ export function TimerScreen() {
     resetTiming();
   };
 
+  const handleBreakPresetSwitch = (minutes: BreakPreset) => {
+    if (phase !== 'idle') return;
+    setBreakPreset(minutes);
+    setBreakDur(minutes * 60);
+    resetTiming();
+  };
+
   // ─── Computed values ─────────────────────────────────────────────────────────
-  const ringColor = phase === 'break' ? BREAK_COLOR : ACCENT;
+  const ringColor = phase === 'break' || activeTab === 'break' ? BREAK_COLOR : ACCENT;
   const time = getDisplaySecondsFromTiming({
     timing,
     atMs: nowMs,
@@ -1426,6 +1438,8 @@ export function TimerScreen() {
     mode,
     preset,
   });
+  const activeSessionElapsedSeconds =
+    phase === 'break' ? getElapsedSecondsFromTiming(timing, nowMs) : workedSeconds;
 
   const progress = (() => {
     if (phase === 'idle') return 0;
@@ -1443,13 +1457,14 @@ export function TimerScreen() {
   })();
 
   const sessionLabel = (() => {
-    if (phase === 'idle') return paused ? 'Paused' : 'Ready to Focus';
+    if (phase === 'idle') return activeTab === 'break' ? 'Ready for a Break' : 'Ready to Focus';
     if (phase === 'work') return mode === 'fixed' ? 'Deep Work' : 'Flow Session';
     if (phase === 'break') return 'Break Time';
     return '';
   })();
 
   const displayTime = (() => {
+    if (phase === 'idle' && activeTab === 'break') return breakPreset * 60;
     if (phase === 'idle' && mode === 'fixed') return WORK_DURATIONS[preset];
     if (phase === 'idle' && mode === 'flexible') return 0;
     return time;
@@ -1530,7 +1545,7 @@ export function TimerScreen() {
             top: '20%',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 500,
+            width: 'min(500px, 100%)',
             height: 400,
             background: `radial-gradient(ellipse, ${ringColor}08 0%, transparent 65%)`,
             pointerEvents: 'none',
@@ -1553,7 +1568,7 @@ export function TimerScreen() {
             gap: 4,
           }}
         >
-          {(['flexible', 'fixed'] as Mode[]).map((m) => (
+          {(['flexible', 'fixed', 'break'] as TimerTab[]).map((m) => (
             <button
               key={m}
               onClick={() => handleModeSwitch(m)}
@@ -1561,18 +1576,22 @@ export function TimerScreen() {
                 padding: '7px 20px',
                 borderRadius: 10,
                 border: 'none',
-                background: mode === m ? ACCENT : 'transparent',
-                color: mode === m ? 'white' : MUTED,
+                background: activeTab === m ? (m === 'break' ? BREAK_COLOR : ACCENT) : 'transparent',
+                color: activeTab === m ? 'white' : MUTED,
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
                 opacity: 1,
                 transition: 'all 0.2s ease',
                 letterSpacing: '0.02em',
-                boxShadow: mode === m ? '0 2px 10px rgba(124,92,252,0.3)' : 'none',
+                boxShadow: activeTab === m
+                  ? m === 'break'
+                    ? '0 2px 10px rgba(16,185,129,0.3)'
+                    : '0 2px 10px rgba(124,92,252,0.3)'
+                  : 'none',
               }}
             >
-              {m === 'fixed' ? 'Fixed Mode' : 'Flexible Mode'}
+              {m === 'fixed' ? 'Fixed Mode' : m === 'flexible' ? 'Flexible Mode' : 'Break'}
             </button>
           ))}
         </motion.div>
@@ -1589,7 +1608,7 @@ export function TimerScreen() {
             marginBottom: 20,
           }}
         >
-          {phase === 'work' && (
+          {phase !== 'idle' && (
             <motion.div
               animate={{ opacity: [1, 0.3, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
@@ -1660,14 +1679,21 @@ export function TimerScreen() {
             </AnimatePresence>
 
             {/* Preset label for fixed idle */}
-            {phase === 'idle' && mode === 'fixed' && (
+            {phase === 'idle' && activeTab === 'fixed' && (
               <span style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
                 {preset.split('/')[0]}min focus · {preset.split('/')[1]}min break
               </span>
             )}
 
+            {/* Preset label for break idle */}
+            {phase === 'idle' && activeTab === 'break' && (
+              <span style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+                {breakPreset} min recovery
+              </span>
+            )}
+
             {/* Elapsed for flexible work */}
-            {phase === 'work' && mode === 'flexible' && (
+            {phase === 'work' && activeTab === 'flexible' && (
               <span style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
                 elapsed
               </span>
@@ -1680,7 +1706,13 @@ export function TimerScreen() {
           {/* Main action button */}
           {phase === 'idle' ? (
             <motion.button
-              whileHover={{ scale: 1.05, boxShadow: '0 8px 30px rgba(124,92,252,0.4)' }}
+              whileHover={{
+                scale: 1.05,
+                boxShadow:
+                  activeTab === 'break'
+                    ? '0 8px 30px rgba(16,185,129,0.4)'
+                    : '0 8px 30px rgba(124,92,252,0.4)',
+              }}
               whileTap={{ scale: 0.95 }}
               onClick={handleStart}
               style={{
@@ -1690,39 +1722,63 @@ export function TimerScreen() {
                 padding: '14px 32px',
                 borderRadius: 50,
                 border: 'none',
-                background: ACCENT,
+                background: activeTab === 'break' ? BREAK_COLOR : ACCENT,
                 color: 'white',
                 fontSize: 15,
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(124,92,252,0.35)',
+                boxShadow: activeTab === 'break'
+                  ? '0 4px 20px rgba(16,185,129,0.35)'
+                  : '0 4px 20px rgba(124,92,252,0.35)',
               }}
             >
               <Play size={16} fill="white" />
-              Start Focus
+              {activeTab === 'break' ? 'Start Break' : 'Start Focus'}
             </motion.button>
           ) : phase === 'break' ? (
-            <motion.button
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={handleStop}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '14px 28px',
-                borderRadius: 50,
-                border: `1px solid rgba(16,185,129,0.3)`,
-                background: 'rgba(16,185,129,0.1)',
-                color: '#34D399',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <SkipForward size={15} />
-              Skip Break
-            </motion.button>
+            <>
+              <motion.button
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={paused ? handleResume : handlePause}
+                aria-label={paused ? 'Resume break' : 'Pause break'}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  border: `1px solid ${BORDER}`,
+                  background: SURFACE2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: TEXT,
+                }}
+              >
+                {paused ? <Play size={20} fill={TEXT} /> : <Pause size={20} />}
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={handleStop}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '14px 28px',
+                  borderRadius: 50,
+                  border: `1px solid rgba(16,185,129,0.3)`,
+                  background: 'rgba(16,185,129,0.1)',
+                  color: '#34D399',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <SkipForward size={15} />
+                Skip Break
+              </motion.button>
+            </>
           ) : (
             <>
               {/* Pause / Resume */}
@@ -1775,7 +1831,7 @@ export function TimerScreen() {
 
         {/* Preset selector (fixed idle) */}
         <AnimatePresence initial={false}>
-          {mode === 'fixed' && phase === 'idle' && (
+          {activeTab === 'fixed' && phase === 'idle' && (
             <motion.div
               initial={false}
               animate={{ opacity: 1, y: 0 }}
@@ -1799,6 +1855,34 @@ export function TimerScreen() {
                   }}
                 >
                   {p} <span style={{ opacity: 0.6 }}>min</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+          {activeTab === 'break' && phase === 'idle' && (
+            <motion.div
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              style={{ display: 'flex', gap: 8 }}
+            >
+              {BREAK_PRESETS.map((minutes) => (
+                <button
+                  key={minutes}
+                  onClick={() => handleBreakPresetSwitch(minutes)}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: 8,
+                    border: `1px solid ${breakPreset === minutes ? 'rgba(16,185,129,0.4)' : BORDER}`,
+                    background: breakPreset === minutes ? 'rgba(16,185,129,0.1)' : 'transparent',
+                    color: breakPreset === minutes ? '#34D399' : MUTED,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {minutes} min
                 </button>
               ))}
             </motion.div>
@@ -1975,7 +2059,7 @@ export function TimerScreen() {
         {pendingMode && (
           <ModeSwitchConfirmModal
             targetMode={pendingMode}
-            workedSeconds={workedSeconds}
+            workedSeconds={activeSessionElapsedSeconds}
             onConfirm={() => completeModeSwitch(pendingMode)}
             onCancel={() => setPendingMode(null)}
           />
