@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart2, BookOpen, Timer, Zap, Moon, Sun } from "lucide-react";
+import { BarChart2, BookOpen, Info, Timer, Zap, Moon, Sun } from "lucide-react";
 import { type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/store/use-app-store";
@@ -18,6 +18,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const timerActive = pathname === "/";
   const statsActive = pathname === "/app/stats";
   const blogActive = pathname.startsWith("/app/blog");
+  const aboutActive = pathname === "/app/about";
 
   return (
     <div
@@ -54,6 +55,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Zap size={14} color="white" fill="white" />
             </div>
             <span
+              className="hidden sm:inline"
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontWeight: 600,
@@ -84,7 +86,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               }}
             >
               <Timer size={14} />
-              Timer
+              <span className="hidden sm:inline">Timer</span>
             </Link>
             <Link
               href="/app/stats"
@@ -118,7 +120,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               }}
             >
               <BarChart2 size={14} />
-              Stats
+              <span className="hidden sm:inline">Stats</span>
             </Link>
             <Link
               href="/app/blog"
@@ -137,7 +139,27 @@ export function AppLayout({ children }: { children: ReactNode }) {
               }}
             >
               <BookOpen size={14} />
-              Blog
+              <span className="hidden sm:inline">Blog</span>
+            </Link>
+            <Link
+              href="/app/about"
+              aria-label="About Flexodoro and its creator"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                color: aboutActive ? "#A78BFA" : "var(--muted)",
+                background: aboutActive ? "rgba(124, 92, 252, 0.1)" : "transparent",
+                textDecoration: "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <Info size={14} />
+              <span className="hidden sm:inline">About</span>
             </Link>
           </nav>
 
